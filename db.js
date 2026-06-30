@@ -1,5 +1,5 @@
 /* ============================================================
- * db.js — whole-device SNAPSHOT sync for the Patron / Rowan suite.
+ * db.js — whole-device SNAPSHOT sync for the Patron / Chasing Legendary Status suite.
  *
  * Design (deliberately simple so it can't half-work):
  *   The ENTIRE device's localStorage is stored in ONE Supabase row
