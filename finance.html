@@ -519,10 +519,10 @@ body {
 const STORAGE_KEY = 'finance_standalone_v1';
 const ACTIVITY_MAX = 50;
 const NW_HISTORY_MAX = 500;
-const CURRENCIES = ['CHF', 'USD', 'EUR', 'GBP'];
+const CURRENCIES = ['AUD', 'CHF', 'USD', 'EUR', 'GBP'];
 const TAB_KEYS = ['net', 'subs', 'orders', 'wish'];
 const TAB_LABELS = { net: 'net worth', subs: 'subs', orders: 'orders', wish: 'wishlist' };
-const DEFAULT_RATES = { CHF: 1, USD: 1, EUR: 1, GBP: 1 };
+const DEFAULT_RATES = { AUD: 1, CHF: 1, USD: 1, EUR: 1, GBP: 1 };
 
 function genId(prefix) { return (prefix || 'id') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8); }
 
@@ -586,7 +586,7 @@ function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replac
 /* ============================================================
  * State + persistence
  * ============================================================ */
-const DEFAULT_STATE = { version: 1, currency: 'CHF', activeTab: 'net', accounts: [], subscriptions: [], orders: [], wishlist: [], activity: [], netWorthHistory: [] };
+const DEFAULT_STATE = { version: 1, currency: 'AUD', activeTab: 'net', accounts: [], subscriptions: [], orders: [], wishlist: [], activity: [], netWorthHistory: [] };
 
 function load() {
   try { const raw = localStorage.getItem(STORAGE_KEY); if (!raw) return Object.assign({}, DEFAULT_STATE); return Object.assign({}, DEFAULT_STATE, JSON.parse(raw)); }
@@ -1703,7 +1703,7 @@ fetch('https://open.er-api.com/v6/latest/CHF')
   .then(r => r.json())
   .then(data => {
     if (data && data.rates) {
-      rates = { CHF: 1, USD: data.rates.USD || 1, EUR: data.rates.EUR || 1, GBP: data.rates.GBP || 1 };
+      rates = { AUD: data.rates.AUD || 1, CHF: 1, USD: data.rates.USD || 1, EUR: data.rates.EUR || 1, GBP: data.rates.GBP || 1 };
       render();
       // Now that USD→CHF is known, refresh live holdings prices if a key is set.
       if (settings.finnhubKey && state.accounts.some(a => a.type === 'stocks' && a.ticker)) refreshStockPrices({ silent: true });
