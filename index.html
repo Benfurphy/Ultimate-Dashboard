@@ -476,7 +476,11 @@ function tickerMetrics(){
   }
   try {
     const fin = lsGet('finance_standalone_v1');
-    if (fin && Array.isArray(fin.accounts) && fin.accounts.length){ const nw = fin.accounts.reduce((a,x)=>a+(Number(x.amountCHF)||0),0); add('NET', 'CHF ' + fmtNum(nw), '', 'good'); }
+    if (fin && Array.isArray(fin.accounts) && fin.accounts.length){
+      const cache = lsGet('finance_nw_cache_v1');
+      const nwLabel = cache && cache.displayNw ? cache.displayNw : ((fin.currency || 'AUD') + ' ' + fmtNum(fin.accounts.reduce((a,x)=>a+(Number(x.amountCHF)||0),0)));
+      add('NET', nwLabel, '', 'good');
+    }
     const wat = lsGet('water_standalone_v1');
     if (wat && wat.logs){ const n = wat.logs[localDateKey()] || 0; add('H2O', String(n), n === 1 ? 'drink' : 'drinks', 'brand'); }
     const sup = lsGet('supplements_standalone_v1');

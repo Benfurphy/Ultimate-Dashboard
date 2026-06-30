@@ -589,7 +589,13 @@ function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replac
 const DEFAULT_STATE = { version: 1, currency: 'AUD', activeTab: 'net', accounts: [], subscriptions: [], orders: [], wishlist: [], activity: [], netWorthHistory: [] };
 
 function load() {
-  try { const raw = localStorage.getItem(STORAGE_KEY); if (!raw) return Object.assign({}, DEFAULT_STATE); return Object.assign({}, DEFAULT_STATE, JSON.parse(raw)); }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return Object.assign({}, DEFAULT_STATE);
+    const saved = JSON.parse(raw);
+    if (saved.currency === 'CHF') saved.currency = 'AUD';
+    return Object.assign({}, DEFAULT_STATE, saved);
+  }
   catch { return Object.assign({}, DEFAULT_STATE); }
 }
 function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {} }
@@ -1527,6 +1533,7 @@ function render() {
   document.getElementById('app').innerHTML = headerHtml() + tickerHtml() + viewHtml() + tabBarHtml();
   renderModal();
   mountTicker();
+  try { localStorage.setItem('finance_nw_cache_v1', JSON.stringify({ displayNw: fmt(netWorthChf(state.accounts)), currency: state.currency })); } catch {}
   // Focus an inline-edit input if one just opened.
   if (ui.edit) {
     const el = document.getElementById('edit-' + ui.edit.field + '-' + ui.edit.id);
