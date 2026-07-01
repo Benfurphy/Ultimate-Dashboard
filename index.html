@@ -356,7 +356,7 @@ let garminStatus = { connected: false, checked: false };
 async function syncGarmin(){
   if (!ON_SERVER) return;
   try {
-    const r = await fetch('/api/garmin/data', { cache: 'no-store' });
+    const r = await fetch('/api/garmin', { cache: 'no-store' });
     const j = await r.json();
     garminStatus = { connected: !!j.connected, checked: true };
     if (j.connected) {
@@ -764,7 +764,7 @@ document.addEventListener('click', e => {
   }
   if (action === 'garmin-sync') { syncGarmin(); return; }
   if (action === 'garmin-disconnect') {
-    fetch('/api/garmin/logout').catch(()=>{}).then(() => {
+    fetch('/api/garmin?action=logout').catch(()=>{}).then(() => {
       garminStatus = { connected: false, checked: true };
       if (health && health.source === 'garmin') { clearHealth(); health = null; }
       ui.modalOpen = false; render();
@@ -777,7 +777,7 @@ document.addEventListener('click', e => {
     const password = (document.getElementById('g-pass') || {}).value;
     if (!username || !password) { ui.garminMsg = 'Enter your Garmin username and password.'; renderModal(); return; }
     btn.disabled = true;
-    fetch('/api/garmin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }) })
+    fetch('/api/garmin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }) })
       .then(r => r.json())
       .then(j => {
         if (j.ok) { ui.garminMsg = ''; syncGarmin(); return; }
@@ -793,7 +793,7 @@ document.addEventListener('click', e => {
     const raw = (document.getElementById('g-tokens') || {}).value || '';
     let tokens;
     try { tokens = JSON.parse(raw); } catch (e) { ui.garminMsg = 'That doesn’t look like valid JSON — paste the exact output of the script.'; renderModal(); return; }
-    fetch('/api/garmin/tokens', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tokens }) })
+    fetch('/api/garmin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tokens }) })
       .then(r => r.json())
       .then(j => {
         if (j.ok) { ui.garminMsg = ''; ui.garminFallback = false; syncGarmin(); return; }
