@@ -1,0 +1,7 @@
+{
+  "name": "ultimate-dashboard",
+  "private": true,
+  "dependencies": {
+    "garmin-connect": "1.6.2"
+  }
+}

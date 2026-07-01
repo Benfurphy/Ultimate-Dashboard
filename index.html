@@ -262,7 +262,7 @@ const APPS = [
   { file: 'finance.html',     name: 'Finance',     tag: 'Net worth · subs · orders · wishlist', icon: '💰', wide: true },
   { file: 'gym.html',         name: 'Gym',         tag: 'Progressive overload coach',           icon: '🏋️', wide: true },
   { file: 'supplements.html', name: 'Supplements', tag: 'Your stack + smart recommendations',   icon: '💊' },
-  { file: 'whoop.html',       name: 'Fitness Band', tag: 'Whoop · Fitbit · Apple Watch sync',      icon: '🔋' },
+  { file: 'whoop.html',       name: 'Fitness Band', tag: 'Whoop · Fitbit · Apple Watch · Garmin sync', icon: '🔋' },
   { file: 'water.html',       name: 'Water',       tag: 'Daily hydration target',                icon: '💧' },
   { file: 'creator.html',     name: 'Creator',     tag: 'Schedule · accounts · analytics',       icon: '🎬' },
   { file: 'goals.html',       name: 'Goals',       tag: 'Goals & streaks',                       icon: '🎯' },
@@ -351,7 +351,25 @@ async function syncFitbit(){
   render();
 }
 
-function sourceLabel(s){ return s === 'apple' ? 'Apple Watch' : s === 'manual' ? 'Manual' : s === 'fitbit' ? 'Fitbit' : 'Whoop'; }
+/* ---- Live Garmin sync — logs into Garmin Connect directly (no self-serve OAuth exists) ---- */
+let garminStatus = { connected: false, checked: false };
+async function syncGarmin(){
+  if (!ON_SERVER) return;
+  try {
+    const r = await fetch('/api/garmin/data', { cache: 'no-store' });
+    const j = await r.json();
+    garminStatus = { connected: !!j.connected, checked: true };
+    if (j.connected) {
+      health = { source: 'garmin', connected: true, ts: j.ts || Date.now(), recovery: j.recovery, sleepHours: j.sleepHours, sleepPerf: j.sleepPerf, sleepTargetHours: j.sleepTargetHours || 8, bedtime: j.bedtime, wakeTime: j.wakeTime, hrv: j.hrv, rhr: j.rhr, strain: null };
+      saveHealth(health);
+    } else if (health && health.source === 'garmin') {
+      clearHealth(); health = null; // token expired/disconnected — drop stale Garmin data
+    }
+  } catch (e) { garminStatus = { connected: false, checked: true }; }
+  render();
+}
+
+function sourceLabel(s){ return s === 'apple' ? 'Apple Watch' : s === 'garmin' ? 'Garmin' : s === 'manual' ? 'Manual' : s === 'fitbit' ? 'Fitbit' : 'Whoop'; }
 function recTone(r){ if (r == null) return 'muted'; if (r >= 67) return 'good'; if (r >= 34) return 'watch'; return 'low'; }
 function formatHM(h){ if (h == null) return '—'; const hh = Math.floor(h); const mm = Math.round((h - hh) * 60); return hh + 'h ' + String(mm).padStart(2,'0') + 'm'; }
 function formatClock(t){ if (!t) return '—'; const [h, m] = String(t).split(':').map(Number); if (!isFinite(h)) return esc(t); const ap = h < 12 ? 'am' : 'pm'; const h12 = h % 12 === 0 ? 12 : h % 12; return h12 + ':' + String(m || 0).padStart(2,'0') + ap; }
@@ -371,7 +389,7 @@ function firstName(){ return profile && profile.name ? String(profile.name).trim
 /* ============================================================
  * UI state
  * ============================================================ */
-const ui = { modalOpen: false, draftSource: 'manual', profileOpen: false, profileDraft: null };
+const ui = { modalOpen: false, draftSource: 'manual', profileOpen: false, profileDraft: null, garminFallback: false, garminMsg: '' };
 
 /* ============================================================
  * Views
@@ -392,7 +410,7 @@ function vitalsTileHtml(){
     return '<section class="vitals">'
       + '<div class="vitalsHead"><span class="vitalsEyebrow">Today’s vitals</span></div>'
       + '<div class="vitalsEmpty"><div class="vitalsEmptyTitle">No vitals yet</div>'
-      + '<p class="vitalsEmptyBody">Connect Whoop, link your Apple Watch, or enter recovery &amp; sleep by hand. Your numbers then power the rest of the suite — the supplement recommender reads recovery &amp; sleep automatically.</p>'
+      + '<p class="vitalsEmptyBody">Connect Whoop, link your Apple Watch or Garmin, or enter recovery &amp; sleep by hand. Your numbers then power the rest of the suite — the supplement recommender reads recovery &amp; sleep automatically.</p>'
       + '<div class="vitalsFoot"><button type="button" class="btn btn-primary" data-action="open-vitals">Add vitals</button></div></div></section>';
   }
   const tone = recTone(h.recovery);
@@ -560,6 +578,26 @@ function renderModal(){
       bodyHtml = '<p class="panelNote">Connect your Fitbit account once — sleep, HRV, resting HR &amp; bed/wake times then sync automatically. You log in on fitbit.com; your tokens stay server-side. (Fitbit has no recovery score, so that ring stays blank.)</p>'
         + '<div class="srcActions"><a class="btn btn-primary" href="/api/fitbit/login">Connect Fitbit</a></div>';
     }
+  } else if (src === 'garmin') {
+    if (!ON_SERVER) {
+      bodyHtml = '<p class="panelNote">Live Garmin sync runs on the deployed app (Vercel). Opened locally, use <strong>Apple Watch</strong> or <strong>Manual</strong> above. Once deployed, a <em>Connect Garmin</em> form appears here. See <strong>GARMIN_SETUP.md</strong>.</p>';
+    } else if (garminStatus.connected) {
+      bodyHtml = '<p class="panelNote">✓ <strong>Garmin connected.</strong> Body Battery, HRV, resting HR &amp; sleep sync automatically and publish across the suite. Tokens are stored server-side, never in the browser.</p>'
+        + '<div class="srcActions"><button type="button" class="btn btn-link spacer" data-action="garmin-disconnect">disconnect Garmin</button><button type="button" class="btn btn-primary" data-action="garmin-sync">Sync now</button></div>';
+    } else {
+      bodyHtml = '<p class="panelNote">Garmin has no self-serve developer API, so this logs into Garmin Connect with your own username/password (sent once, straight to Garmin — never stored) and keeps only the session tokens server-side.</p>'
+        + (ui.garminMsg ? '<p class="panelNote" style="border-color:var(--neg);border-left-color:var(--neg)">' + esc(ui.garminMsg) + '</p>' : '')
+        + '<div class="fieldGrid">'
+        + '<div class="field"><label class="fieldLabel" for="g-user">Garmin username / email</label><input id="g-user" class="fieldInput" type="text" autocomplete="username" placeholder="you@example.com" /></div>'
+        + '<div class="field"><label class="fieldLabel" for="g-pass">Garmin password</label><input id="g-pass" class="fieldInput" type="password" autocomplete="current-password" placeholder="••••••••" /></div>'
+        + '</div>'
+        + '<div class="srcActions"><button type="button" class="btn btn-link spacer" data-action="garmin-toggle-fallback">' + (ui.garminFallback ? 'use username/password instead' : 'paste tokens instead') + '</button><button type="button" class="btn btn-primary" data-action="garmin-login">Connect Garmin</button></div>';
+      if (ui.garminFallback) {
+        bodyHtml += '<p class="howtoFoot" style="margin-top:var(--space-3)">Ran <strong>node scripts/garmin-get-tokens.js</strong> locally? Paste the printed JSON below.</p>'
+          + '<div class="field"><textarea id="g-tokens" class="fieldInput" rows="3" placeholder="{&quot;oauth1&quot;:...,&quot;oauth2&quot;:...}"></textarea></div>'
+          + '<div class="srcActions"><button type="button" class="btn btn-primary" data-action="garmin-save-tokens">Save tokens</button></div>';
+      }
+    }
   } else {
     bodyHtml = '<div class="fieldGrid">'
       + '<div class="field"><label class="fieldLabel" for="f-rec">Recovery / readiness %</label><input id="f-rec" class="fieldInput" type="number" min="0" max="100" inputmode="numeric" placeholder="—" value="' + esc(v('recovery')) + '" /></div>'
@@ -584,11 +622,11 @@ function renderModal(){
   const canClear = !!health;
   root.innerHTML = '<div class="overlay" data-action="close-vitals"><div class="panel" data-stop="1">'
     + '<div class="panelHead"><div><div class="panelEyebrow">Health source</div><h2 class="panelTitle">Today’s vitals</h2></div><button type="button" class="panelClose" data-action="close-vitals">×</button></div>'
-    + '<div class="srcPills">' + pill('whoop','🔋','Whoop') + pill('fitbit','💠','Fitbit') + pill('apple','⌚','Apple Watch') + pill('manual','✍️','Manual') + '</div>'
+    + '<div class="srcPills">' + pill('whoop','🔋','Whoop') + pill('fitbit','💠','Fitbit') + pill('apple','⌚','Apple Watch') + pill('garmin','🧭','Garmin') + pill('manual','✍️','Manual') + '</div>'
     + bodyHtml
     + '<div class="panelActions">' + (canClear ? '<button type="button" class="btn btn-link spacer" data-action="clear-vitals">clear vitals</button>' : '')
     + '<button type="button" class="btn btn-ghost" data-action="close-vitals">Cancel</button>'
-    + (src !== 'whoop' && src !== 'fitbit' ? '<button type="button" class="btn btn-primary" data-action="save-vitals">Save vitals</button>' : '')
+    + (src !== 'whoop' && src !== 'fitbit' && src !== 'garmin' ? '<button type="button" class="btn btn-primary" data-action="save-vitals">Save vitals</button>' : '')
     + '</div></div></div>';
 }
 
@@ -724,6 +762,47 @@ document.addEventListener('click', e => {
     });
     return;
   }
+  if (action === 'garmin-sync') { syncGarmin(); return; }
+  if (action === 'garmin-disconnect') {
+    fetch('/api/garmin/logout').catch(()=>{}).then(() => {
+      garminStatus = { connected: false, checked: true };
+      if (health && health.source === 'garmin') { clearHealth(); health = null; }
+      ui.modalOpen = false; render();
+    });
+    return;
+  }
+  if (action === 'garmin-toggle-fallback') { ui.garminFallback = !ui.garminFallback; ui.garminMsg = ''; renderModal(); return; }
+  if (action === 'garmin-login') {
+    const username = (document.getElementById('g-user') || {}).value;
+    const password = (document.getElementById('g-pass') || {}).value;
+    if (!username || !password) { ui.garminMsg = 'Enter your Garmin username and password.'; renderModal(); return; }
+    btn.disabled = true;
+    fetch('/api/garmin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }) })
+      .then(r => r.json())
+      .then(j => {
+        if (j.ok) { ui.garminMsg = ''; syncGarmin(); return; }
+        ui.garminMsg = j.error === 'locked' ? 'Garmin says this account is locked — open connect.garmin.com in a browser to clear it, then try again.'
+          : j.error === 'mfa_or_blocked' ? 'Garmin blocked this login (likely a verification challenge it can’t complete from here). Use “paste tokens instead” below.'
+          : 'Login failed — check your username and password.';
+        renderModal();
+      })
+      .catch(() => { ui.garminMsg = 'Login request failed — try again.'; renderModal(); });
+    return;
+  }
+  if (action === 'garmin-save-tokens') {
+    const raw = (document.getElementById('g-tokens') || {}).value || '';
+    let tokens;
+    try { tokens = JSON.parse(raw); } catch (e) { ui.garminMsg = 'That doesn’t look like valid JSON — paste the exact output of the script.'; renderModal(); return; }
+    fetch('/api/garmin/tokens', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tokens }) })
+      .then(r => r.json())
+      .then(j => {
+        if (j.ok) { ui.garminMsg = ''; ui.garminFallback = false; syncGarmin(); return; }
+        ui.garminMsg = 'Those tokens weren’t accepted — re-run the script and paste fresh output.';
+        renderModal();
+      })
+      .catch(() => { ui.garminMsg = 'Save request failed — try again.'; renderModal(); });
+    return;
+  }
 });
 
 // Profile-form fields → draft (text/number on input keeps caret; selects on change; units re-renders to relabel).
@@ -772,6 +851,7 @@ applyTheme(currentTheme);
   } catch (e) {}
   syncWhoop();
   syncFitbit();
+  syncGarmin();
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
