@@ -389,7 +389,7 @@ function firstName(){ return profile && profile.name ? String(profile.name).trim
 /* ============================================================
  * UI state
  * ============================================================ */
-const ui = { modalOpen: false, draftSource: 'manual', profileOpen: false, profileDraft: null, garminFallback: false, garminMsg: '' };
+const ui = { modalOpen: false, draftSource: 'manual', profileOpen: false, profileDraft: null, garminFallback: false, garminMsg: '', garminUser: '', garminPass: '' };
 
 /* ============================================================
  * Views
@@ -588,8 +588,8 @@ function renderModal(){
       bodyHtml = '<p class="panelNote">Garmin has no self-serve developer API, so this logs into Garmin Connect with your own username/password (sent once, straight to Garmin — never stored) and keeps only the session tokens server-side.</p>'
         + (ui.garminMsg ? '<p class="panelNote" style="border-color:var(--neg);border-left-color:var(--neg)">' + esc(ui.garminMsg) + '</p>' : '')
         + '<div class="fieldGrid">'
-        + '<div class="field"><label class="fieldLabel" for="g-user">Garmin username / email</label><input id="g-user" class="fieldInput" type="text" autocomplete="username" placeholder="you@example.com" /></div>'
-        + '<div class="field"><label class="fieldLabel" for="g-pass">Garmin password</label><input id="g-pass" class="fieldInput" type="password" autocomplete="current-password" placeholder="••••••••" /></div>'
+        + '<div class="field"><label class="fieldLabel" for="g-user">Garmin username / email</label><input id="g-user" data-gf="garminUser" class="fieldInput" type="text" autocomplete="username" placeholder="you@example.com" value="' + esc(ui.garminUser) + '" /></div>'
+        + '<div class="field"><label class="fieldLabel" for="g-pass">Garmin password</label><input id="g-pass" data-gf="garminPass" class="fieldInput" type="password" autocomplete="current-password" placeholder="••••••••" value="' + esc(ui.garminPass) + '" /></div>'
         + '</div>'
         + '<div class="srcActions"><button type="button" class="btn btn-link spacer" data-action="garmin-toggle-fallback">' + (ui.garminFallback ? 'use username/password instead' : 'paste tokens instead') + '</button><button type="button" class="btn btn-primary" data-action="garmin-login">Connect Garmin</button></div>';
       if (ui.garminFallback) {
@@ -808,7 +808,9 @@ document.addEventListener('click', e => {
 // Profile-form fields → draft (text/number on input keeps caret; selects on change; units re-renders to relabel).
 // Lazy-init the draft so first-run typing is never dropped.
 document.addEventListener('input', e => {
-  const t = e.target; if (!(t && t.dataset && t.dataset.pf)) return;
+  const t = e.target;
+  if (t && t.dataset && t.dataset.gf) { ui[t.dataset.gf] = t.value; return; }
+  if (!(t && t.dataset && t.dataset.pf)) return;
   if (!ui.profileDraft) ui.profileDraft = draftFromProfile();
   ui.profileDraft[t.dataset.pf] = t.value;
 });
