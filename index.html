@@ -421,6 +421,7 @@ function vitalsTileHtml(){
   function row(label, val){ return '<div class="vRow"><span class="vLabel">' + label + '</span><span class="vVal">' + val + '</span></div>'; }
   const sleepVal = h.sleepHours != null ? formatHM(h.sleepHours) + (h.sleepPerf != null ? '<em>' + Math.round(h.sleepPerf) + '%</em>' : '') : '—';
   const metrics = '<div class="vMetrics">'
+    + (h.trainingReadiness != null ? row('Readiness', Math.round(h.trainingReadiness) + '<em>%</em>') : '')
     + row('Sleep', sleepVal)
     + (h.bedtime && h.wakeTime ? row('In bed', formatClock(h.bedtime) + ' <em>→</em> ' + formatClock(h.wakeTime)) : '')
     + row('HRV', h.hrv != null ? Math.round(h.hrv) + '<em>ms</em>' : '—')
