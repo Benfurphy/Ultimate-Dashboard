@@ -43,6 +43,22 @@ async function currentBodyBattery(client, dateStr) {
   } catch (e) { return null; }
 }
 
+// Training Readiness (0-100 + a level like "HIGH"/"MODERATE"/"LOW") is Garmin's own
+// composite recovery score — distinct from Body Battery, which is an all-day energy
+// gauge rather than a stable daily readiness read. Also undocumented; same defensive
+// parsing approach as Body Battery.
+async function trainingReadiness(client, dateStr) {
+  try {
+    const base = client.client.url.GC_API;
+    const rows = await client.get(base + '/metrics-service/metrics/trainingreadiness/' + dateStr);
+    const list = Array.isArray(rows) ? rows : (rows ? [rows] : []);
+    if (!list.length) return null;
+    const morning = list.find(r => r && r.inputContext === 'AFTER_WAKEUP_RESET');
+    const entry = morning || list[list.length - 1];
+    return entry && typeof entry.score === 'number' ? Math.round(entry.score) : null;
+  } catch (e) { return null; }
+}
+
 async function handleData(req, res) {
   const client = L.clientFromCookies(req);
   if (!client) { res.statusCode = 200; res.end(JSON.stringify({ connected: false })); return; }
@@ -61,6 +77,7 @@ async function handleData(req, res) {
 
   const dto = sleep && sleep.dailySleepDTO;
   const recovery = await currentBodyBattery(client, dateStr);
+  const readiness = await trainingReadiness(client, dateStr);
   const hrv = sleep && sleep.avgOvernightHrv != null ? Math.round(sleep.avgOvernightHrv) : null;
   const rhr = sleep && sleep.restingHeartRate != null ? Math.round(sleep.restingHeartRate) : null;
   const sleepHours = dto && dto.sleepTimeSeconds != null ? Math.round((dto.sleepTimeSeconds / 3600) * 10) / 10 : null;
@@ -71,7 +88,7 @@ async function handleData(req, res) {
   res.statusCode = 200;
   res.end(JSON.stringify({
     connected: true, source: 'garmin', ts: Date.now(),
-    recovery, hrv, rhr, sleepPerf, sleepHours, sleepTargetHours: 8, bedtime, wakeTime,
+    recovery, trainingReadiness: readiness, hrv, rhr, sleepPerf, sleepHours, sleepTargetHours: 8, bedtime, wakeTime,
   }));
 }
 

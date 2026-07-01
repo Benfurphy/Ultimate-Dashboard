@@ -360,7 +360,7 @@ async function syncGarmin(){
     const j = await r.json();
     garminStatus = { connected: !!j.connected, checked: true };
     if (j.connected) {
-      health = { source: 'garmin', connected: true, ts: j.ts || Date.now(), recovery: j.recovery, sleepHours: j.sleepHours, sleepPerf: j.sleepPerf, sleepTargetHours: j.sleepTargetHours || 8, bedtime: j.bedtime, wakeTime: j.wakeTime, hrv: j.hrv, rhr: j.rhr, strain: null };
+      health = { source: 'garmin', connected: true, ts: j.ts || Date.now(), recovery: j.recovery, trainingReadiness: j.trainingReadiness, sleepHours: j.sleepHours, sleepPerf: j.sleepPerf, sleepTargetHours: j.sleepTargetHours || 8, bedtime: j.bedtime, wakeTime: j.wakeTime, hrv: j.hrv, rhr: j.rhr, strain: null };
       saveHealth(health);
     } else if (health && health.source === 'garmin') {
       clearHealth(); health = null; // token expired/disconnected — drop stale Garmin data
@@ -487,6 +487,7 @@ function tickerMetrics(){
   const h = health;
   if (h){
     if (h.recovery != null) add('REC', Math.round(h.recovery), '%', recTone(h.recovery));
+    if (h.trainingReadiness != null) add('TR', Math.round(h.trainingReadiness), '%', recTone(h.trainingReadiness));
     if (h.sleepHours != null){ const hh = Math.floor(h.sleepHours), mm = Math.round((h.sleepHours - hh) * 60); add('SLP', hh + 'h' + String(mm).padStart(2,'0'), '', h.sleepPerf != null ? (h.sleepPerf >= 85 ? 'good' : h.sleepPerf >= 60 ? 'watch' : 'low') : 'brand'); }
     if (h.strain != null) add('STR', (Math.round(h.strain * 10) / 10).toFixed(1), '', 'brand');
     if (h.hrv != null) add('HRV', Math.round(h.hrv), 'ms', 'good');
@@ -582,7 +583,7 @@ function renderModal(){
     if (!ON_SERVER) {
       bodyHtml = '<p class="panelNote">Live Garmin sync runs on the deployed app (Vercel). Opened locally, use <strong>Apple Watch</strong> or <strong>Manual</strong> above. Once deployed, a <em>Connect Garmin</em> form appears here. See <strong>GARMIN_SETUP.md</strong>.</p>';
     } else if (garminStatus.connected) {
-      bodyHtml = '<p class="panelNote">✓ <strong>Garmin connected.</strong> Body Battery, HRV, resting HR &amp; sleep sync automatically and publish across the suite. Tokens are stored server-side, never in the browser.</p>'
+      bodyHtml = '<p class="panelNote">✓ <strong>Garmin connected.</strong> Body Battery, Training Readiness, HRV, resting HR &amp; sleep sync automatically and publish across the suite. Tokens are stored server-side, never in the browser.</p>'
         + '<div class="srcActions"><button type="button" class="btn btn-link spacer" data-action="garmin-disconnect">disconnect Garmin</button><button type="button" class="btn btn-primary" data-action="garmin-sync">Sync now</button></div>';
     } else {
       bodyHtml = '<p class="panelNote">Garmin has no self-serve developer API, so this logs into Garmin Connect with your own username/password (sent once, straight to Garmin — never stored) and keeps only the session tokens server-side.</p>'

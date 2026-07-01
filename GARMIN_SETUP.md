@@ -41,10 +41,10 @@ can't afford separate route files the way WHOOP/Fitbit do.
 |---|---|
 | `POST /api/garmin` `{ username, password }` | Logs into Garmin Connect; stores session tokens. |
 | `POST /api/garmin` `{ tokens }` | Fallback: stores a token JSON produced by `scripts/garmin-get-tokens.js`. |
-| `GET /api/garmin` | Restores the session, fetches last night's sleep + today's Body Battery, returns vitals. |
+| `GET /api/garmin` | Restores the session, fetches last night's sleep + today's Body Battery &amp; Training Readiness, returns vitals. |
 | `GET /api/garmin?action=logout` | Forgets the stored tokens (disconnect). |
 
-The returned vitals (Body Battery as recovery, HRV, resting HR, sleep) are written
+The returned vitals (Body Battery as recovery, Training Readiness, HRV, resting HR, sleep) are written
 to the suite-wide `patron_health_v1` record, so the Supplements recommender picks
 them up automatically — same as manual or Apple Watch entry, just live.
 
