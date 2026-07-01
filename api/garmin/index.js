@@ -30,7 +30,10 @@ function toHHMM(msLocal) {
 // defensively since the response shape isn't officially specified anywhere.
 async function currentBodyBattery(client, dateStr) {
   try {
-    const rows = await client.get('/wellness-service/wellness/bodyBattery/reports/daily?startDate=' + dateStr + '&endDate=' + dateStr);
+    // client.get() hits a bare axios instance with no base URL configured, unlike the
+    // library's own named methods (which build full URLs internally) — has to be spelled out.
+    const base = client.client.url.GC_API;
+    const rows = await client.get(base + '/wellness-service/wellness/bodyBattery/reports/daily?startDate=' + dateStr + '&endDate=' + dateStr);
     const today = Array.isArray(rows) ? rows[rows.length - 1] : rows;
     const series = today && today.bodyBatteryValuesArray;
     if (!Array.isArray(series) || !series.length) return null;

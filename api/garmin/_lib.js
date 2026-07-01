@@ -46,7 +46,9 @@ function clientFromCookies(req) {
   let tokens;
   try { tokens = JSON.parse(raw); } catch (e) { return null; }
   if (!tokens || !tokens.oauth1 || !tokens.oauth2) return null;
-  const client = new GarminConnect();
+  // The constructor throws synchronously if given no credentials at all, even though
+  // we don't need a password here — we're restoring a session, not logging in.
+  const client = new GarminConnect({ username: '', password: '' });
   client.loadToken(tokens.oauth1, tokens.oauth2);
   return client;
 }
