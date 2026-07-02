@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0C0C12" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Patron" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+
+<title>Journal · Chasing Legendary Status</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("patron_theme")||"nocturne");}catch(e){document.documentElement.setAttribute("data-theme","nocturne");}</script>
+
+<link rel="stylesheet" href="theme.css" />
+
+<style>
+  .shell { max-width: 720px; }
+  .stack { display:flex; flex-direction:column; gap: var(--space-4); }
+
+  .ctxRow { display:flex; flex-wrap:wrap; gap: var(--space-2); align-items:center; }
+  .ctxPill { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-pill); font-family:var(--font-mono); font-size:11px; color:var(--muted-strong); }
+
+  /* ---- start buttons ---- */
+  .startRow { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-3); }
+  .startBtn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:var(--space-6) var(--space-4); border-radius:var(--radius-lg); border:1px solid var(--border); background:var(--surface); cursor:pointer; font-family:var(--font-ui); color:var(--fg); text-align:center; transition:border-color var(--duration) var(--ease-premium), background var(--duration) var(--ease-premium); }
+  .startBtn:hover { border-color:var(--brand-line); background:var(--brand-soft); }
+  .startBtnTitle { font-family:var(--font-display); font-weight:600; font-size:var(--text-lg); }
+  .startBtnSub { font-size:12px; color:var(--muted); }
+
+  /* ---- slot editor ---- */
+  .slotBlock { display:flex; flex-direction:column; gap:8px; padding: var(--space-4) 0; border-bottom:1px solid var(--border); }
+  .slotBlock:last-of-type { border-bottom:0; }
+  .slotEyebrow { font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--brand); }
+  .slotPrompt { font-family:var(--font-display); font-weight:600; font-size:var(--text-lg); letter-spacing:-0.01em; margin:0; }
+  .slotArea { width:100%; min-height:70px; resize:vertical; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:10px 12px; color:var(--fg); font-family:var(--font-ui); font-size:14px; line-height:1.5; outline:none; transition:border-color var(--duration) var(--ease-premium), box-shadow var(--duration) var(--ease-premium); }
+  .slotArea:focus { border-color:var(--brand-line); box-shadow:0 0 0 3px var(--brand-soft); }
+
+  /* ---- add-ons ---- */
+  .addonReveal { appearance:none; background:transparent; border:0; color:var(--brand); font-family:var(--font-ui); font-size:13px; font-weight:600; cursor:pointer; padding:4px 0; text-align:left; }
+  .addonReveal:hover { text-decoration:underline; }
+  .addonGroup { margin-top:var(--space-2); }
+  .addonGroupLabel { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin: 0 0 6px; }
+  .addonChips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:var(--space-3); }
+  .addonChip { appearance:none; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); color:var(--muted-strong); font-family:var(--font-ui); font-size:12px; padding:7px 11px; cursor:pointer; text-align:left; transition:border-color var(--duration) var(--ease-premium), background var(--duration) var(--ease-premium); }
+  .addonChip:hover:not(:disabled) { border-color:var(--brand-line); background:var(--brand-soft); color:var(--fg); }
+  .addonChip:disabled { opacity:.35; cursor:not-allowed; }
+  .addonChip.added { border-color:var(--brand-line); background:var(--brand-soft); color:var(--brand); }
+
+  /* ---- rows (history) ---- */
+  .rowItem { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+  .rowItem:last-child { border-bottom:0; }
+  .rowMain { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .rowDate { font-weight:600; font-size:13px; }
+  .rowPreview { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:420px; }
+  .rowRight { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .rowDel { appearance:none; background:transparent; border:0; color:var(--muted); font-size:18px; line-height:1; cursor:pointer; padding:4px 8px; border-radius:6px; }
+  .rowDel:hover { color:var(--neg); }
+  .rowEmpty { text-align:center; padding: var(--space-5) 0; color:var(--muted); font-size:13px; font-style:italic; }
+</style>
+</head>
+<body>
+<main class="page grain-overlay">
+  <div class="shell">
+
+    <header class="header">
+      <div>
+        <h1 class="title">Journal</h1>
+        <p class="subtitle">5 or 10 minutes, most nights</p>
+      </div>
+      <div class="headerControls">
+        <a class="backLink" href="index.html">← Dashboard</a>
+        <span id="themeSeg"></span>
+      </div>
+    </header>
+
+    <div id="app" class="stack"></div>
+
+  </div>
+</main>
+<div id="modalRoot"></div>
+
+<script src="theme.js"></script>
+<script>
+document.getElementById('themeSeg').innerHTML = Patron.switcherHtml();
+
+/* ============================================================
+ * Prompt banks — same three slots every day, wording rotates.
+ * ============================================================ */
+const SLOT1 = { eyebrow:'Looking back', prompts:[
+  'What actually mattered about today?',
+  "What's the one moment from today I want to remember?",
+  'How did today feel, and what drove that?',
+  'What took most of my energy today — and was it worth it?',
+  'What went better than expected today?',
+  'If today had a one-line headline, what would it be?',
+  'What am I glad I did today?',
+]};
+const SLOT2 = { eyebrow:'The insight', prompts:[
+  'What did I learn today — about work, myself, or someone else?',
+  'What would I do differently if I had today again?',
+  'What kept coming back into my head today, and why?',
+  'Where did I get in my own way today?',
+  'What worked today that I should do more of?',
+  'What did I notice about my energy, mood, or body today?',
+  "What's a small thing I got right that I'd normally overlook?",
+]};
+const SLOT3 = { eyebrow:'Priming tomorrow', prompts:[
+  'What\'s the one thing that would make tomorrow a win?',
+  "What am I not looking forward to tomorrow — and what's my plan for it?",
+  'Where do I want my focus tomorrow?',
+  "What's the first thing I'll do tomorrow morning?",
+  'What do I want to feel by this time tomorrow?',
+  'What\'s one thing I can do tomorrow for future-me?',
+]};
+const ADDON_GROUPS = [
+  { label:'Gratitude / grounding', prompts:[
+    "Three things I'm grateful for today (fast, no overthinking).",
+    'Who made my day better, and did I tell them?',
+    "What's something good I'm taking for granted right now?",
+  ]},
+  { label:'Stretch / reflective', prompts:[
+    "What's been on my mind lately that I haven't dealt with?",
+    'Am I spending my time on what I say matters?',
+    'What would make this week feel successful when I look back Sunday night?',
+    "What's one thing I'm proud of that I haven't given myself credit for?",
+  ]},
+];
+const ADDON_MAX = 2;
+
+/* ============================================================
+ * Helpers
+ * ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function localDateKey(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// Same "day rolls over at 6am" convention the rest of the suite uses.
+function activeDateKey(d){ d=d?new Date(d):new Date(); if(d.getHours()<6) d.setDate(d.getDate()-1); return localDateKey(d); }
+function fmtDate(key){ return new Date(key+'T12:00:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'}); }
+// Deterministic per-day "random" pick — same day always resolves to the same
+// prompt (stable across reloads), different days resolve differently.
+function hashStr(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function pickForDay(dateKey, salt, list){ const h = hashStr(dateKey+'|'+salt); return list[h % list.length]; }
+
+/* ============================================================
+ * State
+ * ============================================================ */
+const LS = 'journal_standalone_v1';
+function seed(){ return { version:1, entries:{} }; }
+function load(){
+  try {
+    const r = localStorage.getItem(LS);
+    const s = r ? Object.assign(seed(), JSON.parse(r)) : seed();
+    if (!s.entries || typeof s.entries!=='object') s.entries = {};
+    return s;
+  } catch(e){ return seed(); }
+}
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
+let state = load();
+const ui = { addonsOpen:false, historyOpenKey:null };
+let saveTimer = null;
+function scheduleSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(save, 400); }
+
+function newEntry(dateKey){
+  return {
+    slot1: { prompt: pickForDay(dateKey,'s1',SLOT1.prompts), answer:'' },
+    slot2: { prompt: pickForDay(dateKey,'s2',SLOT2.prompts), answer:'' },
+    slot3: { prompt: pickForDay(dateKey,'s3',SLOT3.prompts), answer:'' },
+    addons: [],
+    ts: Date.now(),
+  };
+}
+
+/* ============================================================
+ * Streak — consecutive days with an entry, counting back from today.
+ * Today not having an entry yet doesn't break it (the day isn't over).
+ * ============================================================ */
+function currentStreak(){
+  const DAY = 86400000;
+  let streak = 0, n = 0;
+  while (true) {
+    const key = activeDateKey(new Date(Date.now() - n*DAY));
+    if (n===0 && !state.entries[key]) { n++; continue; } // today in progress — doesn't break the streak yet
+    if (!state.entries[key]) break;
+    streak++;
+    n++;
+  }
+  return streak;
+}
+
+/* ============================================================
+ * Actions
+ * ============================================================ */
+const A = {
+  start(withAddons){
+    const key = activeDateKey();
+    if (!state.entries[key]) state.entries[key] = newEntry(key);
+    ui.addonsOpen = !!withAddons;
+    save(); render();
+  },
+  setAnswer(dateKey, slotKey, value){
+    const e = state.entries[dateKey]; if (!e) return;
+    e[slotKey].answer = value;
+    scheduleSave();
+  },
+  toggleAddons(){ ui.addonsOpen = !ui.addonsOpen; render(); },
+  addAddon(dateKey, prompt){
+    const e = state.entries[dateKey]; if (!e) return;
+    if (e.addons.length >= ADDON_MAX) return;
+    if (e.addons.some(a=>a.prompt===prompt)) return;
+    e.addons.push({ prompt, answer:'' });
+    save(); render(); renderModal();
+  },
+  removeAddon(dateKey, idx){
+    const e = state.entries[dateKey]; if (!e) return;
+    e.addons.splice(idx,1);
+    save(); render(); renderModal();
+  },
+  setAddonAnswer(dateKey, idx, value){
+    const e = state.entries[dateKey]; if (!e || !e.addons[idx]) return;
+    e.addons[idx].answer = value;
+    scheduleSave();
+  },
+  openHistory(key){ ui.historyOpenKey = key; renderModal(); },
+  closeHistory(){ ui.historyOpenKey = null; renderModal(); },
+  deleteEntry(key){
+    delete state.entries[key];
+    if (ui.historyOpenKey === key) ui.historyOpenKey = null;
+    save(); render(); renderModal();
+  },
+};
+
+/* ============================================================
+ * Views
+ * ============================================================ */
+function slotBlockHtml(dateKey, slotKey, meta, editable){
+  const e = state.entries[dateKey][slotKey];
+  return '<div class="slotBlock">'
+    + '<span class="slotEyebrow">'+esc(meta.eyebrow)+'</span>'
+    + '<p class="slotPrompt">'+esc(e.prompt)+'</p>'
+    + (editable
+        ? '<textarea class="slotArea" data-slot="'+slotKey+'" data-date="'+esc(dateKey)+'" placeholder="Write here…">'+esc(e.answer)+'</textarea>'
+        : '<p class="cardTag">'+esc(e.answer || '(no answer)')+'</p>')
+    + '</div>';
+}
+function addonBlockHtml(dateKey, idx, addon, editable){
+  return '<div class="slotBlock">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+    + '<p class="slotPrompt" style="font-size:var(--text-base)">'+esc(addon.prompt)+'</p>'
+    + (editable ? '<button type="button" class="rowDel" data-act="removeAddon" data-date="'+esc(dateKey)+'" data-idx="'+idx+'" aria-label="Remove">×</button>' : '')
+    + '</div>'
+    + (editable
+        ? '<textarea class="slotArea" data-addon="'+idx+'" data-date="'+esc(dateKey)+'" placeholder="Write here…">'+esc(addon.answer)+'</textarea>'
+        : '<p class="cardTag">'+esc(addon.answer || '(no answer)')+'</p>')
+    + '</div>';
+}
+function addonPickerHtml(dateKey, entry){
+  const full = entry.addons.length >= ADDON_MAX;
+  const groups = ADDON_GROUPS.map(g=>{
+    const chips = g.prompts.map(p=>{
+      const added = entry.addons.some(a=>a.prompt===p);
+      const disabled = added || full;
+      return '<button type="button" class="addonChip'+(added?' added':'')+'" '+(disabled?'disabled':'')+' data-act="addAddon" data-date="'+esc(dateKey)+'" data-prompt="'+esc(p)+'">'+(added?'✓ ':'')+esc(p)+'</button>';
+    }).join('');
+    return '<div class="addonGroup"><p class="addonGroupLabel">'+esc(g.label)+'</p><div class="addonChips">'+chips+'</div></div>';
+  }).join('');
+  return '<div class="addonGroup"><p class="cardTag" style="margin-bottom:var(--space-2)">Pick up to '+ADDON_MAX+' for tonight:</p></div>'+groups;
+}
+function entryEditorHtml(dateKey, editable, alwaysShowAddonPicker){
+  const entry = state.entries[dateKey];
+  let html = slotBlockHtml(dateKey,'slot1',SLOT1,editable)
+    + slotBlockHtml(dateKey,'slot2',SLOT2,editable)
+    + slotBlockHtml(dateKey,'slot3',SLOT3,editable);
+  entry.addons.forEach((a,i)=> html += addonBlockHtml(dateKey,i,a,editable));
+  if (editable) {
+    if (alwaysShowAddonPicker || ui.addonsOpen || entry.addons.length>0) {
+      if (entry.addons.length < ADDON_MAX) html += addonPickerHtml(dateKey, entry);
+    } else {
+      html += '<button type="button" class="addonReveal" data-act="toggleAddons">+ Got more tonight? Add optional reflections →</button>';
+    }
+  }
+  return html;
+}
+
+function ctxHtml(){
+  const streak = currentStreak();
+  return '<div class="card"><div class="ctxRow"><span class="ctxPill">'+streak+' day'+(streak===1?'':'s')+' streak</span>'
+    + '<span class="ctxPill">'+Object.keys(state.entries).length+' entries total</span></div></div>';
+}
+function todayHtml(){
+  const key = activeDateKey();
+  const entry = state.entries[key];
+  if (!entry) {
+    return '<section class="card">'
+      + '<span class="cardName">Tonight\'s entry</span>'
+      + '<p class="cardTag" style="margin-bottom:var(--space-3)">Same three prompts every night, worded differently — pick your pace.</p>'
+      + '<div class="startRow">'
+      + '<button type="button" class="startBtn" data-act="start5"><span class="startBtnTitle">5 min journal</span><span class="startBtnSub">3 quick prompts</span></button>'
+      + '<button type="button" class="startBtn" data-act="start10"><span class="startBtnTitle">10 min journal</span><span class="startBtnSub">3 prompts + optional add-ons</span></button>'
+      + '</div></section>';
+  }
+  return '<section class="card"><span class="cardName">Tonight — '+fmtDate(key)+'</span>'+entryEditorHtml(key, true, false)+'</section>';
+}
+function historyHtml(){
+  const todayKey = activeDateKey();
+  const keys = Object.keys(state.entries).filter(k=>k!==todayKey).sort((a,b)=>b.localeCompare(a));
+  if (!keys.length) return '';
+  const rows = keys.map(k=>{
+    const e = state.entries[k];
+    const preview = e.slot1.answer || e.slot2.answer || e.slot3.answer || '';
+    return '<div class="rowItem" data-act="openHistory" data-key="'+esc(k)+'"><div class="rowMain"><span class="rowDate">'+fmtDate(k)+'</span>'
+      + (preview ? '<span class="rowPreview">'+esc(preview)+'</span>' : '')+'</div>'
+      + '<div class="rowRight"><button type="button" class="rowDel" data-act="deleteEntry" data-key="'+esc(k)+'" aria-label="Delete">×</button></div></div>';
+  }).join('');
+  return '<section class="card"><span class="cardName">Past entries</span>'+rows+'</section>';
+}
+function render(){
+  document.getElementById('app').innerHTML = ctxHtml() + todayHtml() + historyHtml();
+}
+
+/* ============================================================
+ * History modal
+ * ============================================================ */
+function modalHtml(){
+  const key = ui.historyOpenKey;
+  if (!key || !state.entries[key]) return '';
+  return '<div class="overlay" data-act="closeHistory"><div class="panel" data-stop="1" style="max-height:85vh;overflow-y:auto">'
+    + '<div class="panelHead"><div><div class="panelEyebrow">Entry</div><h2 class="panelTitle">'+fmtDate(key)+'</h2></div><button type="button" class="panelClose" data-act="closeHistory">×</button></div>'
+    + entryEditorHtml(key, true, true)
+    + '<div class="panelActions"><button type="button" class="btn btn-link spacer" data-act="deleteEntry" data-key="'+esc(key)+'">Delete this entry</button><button type="button" class="btn btn-ghost" data-act="closeHistory">Close</button></div>'
+    + '</div></div>';
+}
+function renderModal(){ document.getElementById('modalRoot').innerHTML = modalHtml(); }
+
+/* ============================================================
+ * Events
+ * ============================================================ */
+document.addEventListener('click', e=>{
+  const stop = e.target.closest('[data-stop]');
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const act = b.dataset.act;
+  if (act==='start5') A.start(false);
+  else if (act==='start10') A.start(true);
+  else if (act==='toggleAddons') A.toggleAddons();
+  else if (act==='addAddon') A.addAddon(b.dataset.date, b.dataset.prompt);
+  else if (act==='removeAddon') A.removeAddon(b.dataset.date, Number(b.dataset.idx));
+  else if (act==='openHistory') A.openHistory(b.dataset.key);
+  else if (act==='closeHistory') { if (!stop || e.target.closest('.panelClose') || e.target.closest('.btn-ghost')) A.closeHistory(); }
+  else if (act==='deleteEntry') { if (confirm('Delete this entry? This can\'t be undone.')) A.deleteEntry(b.dataset.key); }
+});
+document.addEventListener('input', e=>{
+  const t = e.target;
+  if (t.dataset.slot) A.setAnswer(t.dataset.date, t.dataset.slot, t.value);
+  else if (t.dataset.addon != null && t.dataset.addon !== '') A.setAddonAnswer(t.dataset.date, Number(t.dataset.addon), t.value);
+});
+
+render();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
+<script src="cloud-sync.js"></script>
+</body>
+</html>

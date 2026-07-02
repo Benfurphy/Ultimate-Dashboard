@@ -268,6 +268,7 @@ const APPS = [
   { file: 'progress.html',    name: 'Progress',    tag: 'Photos & measurements',                 icon: '📈' },
   { file: 'macros.html',      name: 'Macros',      tag: 'Protein · carbs · fat',                 icon: '🍳' },
   { file: 'caffeine.html',    name: 'Caffeine',    tag: 'Dose timing · peak & crash predictor',  icon: '☕' },
+  { file: 'journal.html',     name: 'Journal',     tag: '5 or 10 min · guided prompts',           icon: '📓' },
 ];
 
 /* ============================================================
@@ -446,6 +447,7 @@ function statFor(file){
     else if (file === 'supplements.html') { const s = lsGet('supplements_standalone_v1'); if (s && Array.isArray(s.items) && s.items.length) { const tk = (s.taken && s.taken[activeDateKey()]) || {}; const n = s.items.filter(i => tk[i.id]).length; return { value: n + '/' + s.items.length, label: 'taken today' }; } }
     else if (file === 'water.html') { const s = lsGet('water_standalone_v1'); if (s && s.logs) { const n = s.logs[localDateKey()] || 0; return { value: String(n), label: (n === 1 ? 'drink' : 'drinks') + ' today' }; } }
     else if (file === 'caffeine.html') { const s = lsGet('caffeine_standalone_v1'); if (s && Array.isArray(s.logs) && s.logs.length) { const key = activeDateKey(); const n = s.logs.filter(l => { const d = new Date(l.ts); if (d.getHours() < 6) d.setDate(d.getDate() - 1); return localDateKey(d) === key; }).reduce((a, l) => a + l.mg, 0); return { value: n + ' mg', label: 'caffeine today' }; } }
+    else if (file === 'journal.html') { const s = lsGet('journal_standalone_v1'); if (s && s.entries && Object.keys(s.entries).length) { const DAY = 86400000; let streak = 0, n = 0; while (true) { const d = new Date(Date.now() - n * DAY); if (d.getHours() < 6) d.setDate(d.getDate() - 1); const key = localDateKey(d); if (n === 0 && !s.entries[key]) { n++; continue; } if (!s.entries[key]) break; streak++; n++; } return { value: streak + ' day' + (streak === 1 ? '' : 's'), label: 'streak' }; } }
   } catch (e) {}
   return null;
 }
