@@ -13,39 +13,119 @@
 <link rel="icon" type="image/svg+xml" href="icon.svg" />
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
 
-<!-- 1. CHANGE THE TITLE to your page's name -->
 <title>Caffeine · Chasing Legendary Status</title>
 
-<!-- Fonts used by the design system (keep as-is) -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-<!-- Sets the saved theme before paint so there's no flash (keep as-is) -->
 <script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("patron_theme")||"nocturne");}catch(e){document.documentElement.setAttribute("data-theme","nocturne");}</script>
 
-<!-- The shared design system. This one line gives you all the
-     colors, fonts, themes, buttons, cards, modals and form styles. -->
 <link rel="stylesheet" href="theme.css" />
 
-<!-- Add your page-specific styles here (optional). Always reuse the
-     tokens (var(--brand), var(--space-4), etc.) so you stay on-brand. -->
 <style>
-  /* example: a simple responsive grid for your content cards */
-  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); }
+  .shell { max-width: 760px; }
+  .stack { display:flex; flex-direction:column; gap: var(--space-4); }
+
+  /* ---- profile / context strip ---- */
+  .ctxRow { display:flex; flex-wrap:wrap; gap: var(--space-2); align-items:center; }
+  .ctxPill { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-pill); font-family:var(--font-mono); font-size:11px; color:var(--muted-strong); }
+  .ctxLink { margin-left:auto; font-size:12px; color:var(--brand); text-decoration:none; font-weight:600; }
+  .ctxLink:hover { text-decoration:underline; }
+
+  /* ---- hero ---- */
+  .heroTop { display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-3); }
+  .statusPill { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:var(--radius-pill); font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--border); }
+  .statusPill.rising { color:var(--warn); background:var(--warn-soft); border-color:var(--warn-line); }
+  .statusPill.peaking { color:var(--neg); background:var(--neg-soft); border-color:var(--neg-line); }
+  .statusPill.falling { color:var(--brand); background:var(--brand-soft); border-color:var(--brand-line); }
+  .statusPill.clear { color:var(--pos); background:var(--pos-soft); border-color:var(--pos-line); }
+  .heroNum { font-family:var(--font-display); font-weight:600; font-size:64px; line-height:1; letter-spacing:-0.03em; font-variant-numeric:tabular-nums; margin: var(--space-2) 0 2px; }
+  .heroNumUnit { font-size: 22px; color:var(--muted); font-weight:600; margin-left:6px; }
+  .heroSub { font-size:13px; color:var(--muted-strong); margin:0 0 var(--space-4); }
+  .heroStatRow { display:flex; gap: var(--space-6); flex-wrap:wrap; padding-top:var(--space-3); border-top:1px solid var(--border); }
+  .heroStat { display:flex; flex-direction:column; gap:3px; }
+  .heroStatLabel { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .heroStatValue { font-family:var(--font-display); font-weight:600; font-size:var(--text-lg); letter-spacing:-0.01em; }
+  .heroEmpty { text-align:center; padding: var(--space-6) 0; color:var(--muted); font-size:14px; }
+
+  /* ---- log button ---- */
+  .logBtnBig { width:100%; padding: var(--space-4); font-size:16px; border-radius:var(--radius-lg); }
+
+  /* ---- daily badge ---- */
+  .dailyHead { display:flex; align-items:baseline; justify-content:space-between; }
+  .dailyHead b { font-family:var(--font-display); font-size:var(--text-lg); }
+  .dailyHead span { font-family:var(--font-mono); font-size:11px; color:var(--muted); }
+  .barTrack { height:9px; background:var(--track); border-radius:var(--radius-pill); overflow:hidden; }
+  .barFill { height:100%; border-radius:var(--radius-pill); transition:width .4s var(--ease-premium); }
+
+  /* ---- note banners ---- */
+  .noteBanner { display:flex; gap:10px; align-items:flex-start; padding: var(--space-3) var(--space-4); border-left:3px solid var(--border-strong); background:var(--surface); border-radius:0 var(--radius-sm) var(--radius-sm) 0; font-size:12.5px; line-height:1.55; color:var(--muted-strong); }
+  .noteBanner.warn { border-left-color:var(--warn); background:var(--warn-soft); }
+  .noteBanner.neg { border-left-color:var(--neg); background:var(--neg-soft); }
+  .noteBanner.pos { border-left-color:var(--pos); background:var(--pos-soft); }
+  .noteIcon { flex-shrink:0; font-size:15px; line-height:1.4; }
+
+  /* ---- chart ---- */
+  .chartSvg { display:block; width:100%; height:170px; overflow:visible; }
+  .chartArea { fill: var(--brand-soft); }
+  .chartLine { fill:none; stroke: var(--brand); stroke-width:2; }
+  .chartRefLine { stroke: var(--border-strong); stroke-width:1; stroke-dasharray:3 3; }
+  .chartNowLine { stroke: var(--fg); opacity:.35; stroke-width:1; stroke-dasharray:2 3; }
+  .chartBedLine { stroke: var(--warn); stroke-width:1; stroke-dasharray:3 3; }
+  .chartLbl { font-family: var(--font-mono); font-size:9px; fill: var(--muted); }
+  .chartLblBed { fill: var(--warn); }
+
+  /* ---- why toggle ---- */
+  .whyToggle { appearance:none; width:100%; display:flex; align-items:center; justify-content:space-between; background:transparent; border:0; color:var(--muted-strong); font-family:var(--font-ui); font-size:13px; cursor:pointer; padding:2px 0; }
+  .whyArrow { transition: transform var(--duration) var(--ease-premium); }
+  .whyArrowOpen { transform: rotate(180deg); }
+  .whyBody { display:flex; flex-direction:column; gap:8px; padding-top: var(--space-3); font-size:12px; color:var(--muted); line-height:1.5; }
+  .whyBody b { color:var(--muted-strong); }
+
+  /* ---- log list ---- */
+  .logRow { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); padding:10px 0; border-bottom:1px solid var(--border); }
+  .logRow:last-child { border-bottom:0; }
+  .logMain { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .logName { font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .logMeta { font-family:var(--font-mono); font-size:11px; color:var(--muted); }
+  .logRight { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  .logMg { font-family:var(--font-mono); font-weight:700; color:var(--brand); font-size:13px; white-space:nowrap; }
+  .logDel { appearance:none; background:transparent; border:0; color:var(--muted); font-size:18px; line-height:1; cursor:pointer; padding:4px 8px; border-radius:6px; }
+  .logDel:hover { color:var(--neg); }
+  .logEmpty { text-align:center; padding: var(--space-5) 0; color:var(--muted); font-size:13px; font-style:italic; }
+
+  /* ---- history ---- */
+  .histBars { display:flex; align-items:flex-end; gap:4px; height:64px; margin: var(--space-2) 0 var(--space-3); }
+  .histBar { flex:1; border-radius:3px 3px 0 0; background:var(--track); min-height:2px; transition: height .4s var(--ease-premium); }
+  .histBar.over { background: var(--neg); }
+  .histBar.on { background: var(--brand); }
+  .histLbls { display:flex; gap:4px; }
+  .histLbl { flex:1; text-align:center; font-family:var(--font-mono); font-size:8px; color:var(--muted); }
+
+  /* ---- modal: search / custom ---- */
+  .modeSeg { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-pill); padding:3px; gap:2px; margin-bottom: var(--space-4); }
+  .modeBtn { appearance:none; background:transparent; border:0; color:var(--muted); font-family:var(--font-ui); font-size:12px; font-weight:700; padding:7px 16px; border-radius:var(--radius-pill); cursor:pointer; }
+  .modeBtn.on { background:var(--brand); color:var(--brand-ink); }
+  .searchResults { max-height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-top:var(--space-3); }
+  .resItem { display:flex; align-items:center; justify-content:space-between; gap:var(--space-2); padding:9px 12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); cursor:pointer; text-align:left; font-family:inherit; color:var(--fg); }
+  .resItem:hover, .resItem.sel { border-color:var(--brand-line); background:var(--brand-soft); }
+  .resName { font-size:13px; font-weight:600; }
+  .resCat { font-family:var(--font-mono); font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-left:8px; }
+  .resMg { font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--brand); white-space:nowrap; }
+  .resEmpty { text-align:center; padding: var(--space-4) 0; font-size:12px; color:var(--muted); }
+  .pickedBox { margin-top:var(--space-4); padding-top:var(--space-4); border-top:1px solid var(--border); }
+  .checkRow { display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted-strong); margin-top:var(--space-1); }
 </style>
 </head>
 <body>
 <main class="page grain-overlay">
   <div class="shell">
 
-    <!-- HEADER: title on the left, back-link + theme switcher on the right.
-         #themeSeg is filled in by theme.js at the bottom of this file. -->
     <header class="header">
       <div>
-        <!-- 2. CHANGE the title + subtitle -->
         <h1 class="title">Caffeine</h1>
-        <p class="subtitle">one-line tagline</p>
+        <p class="subtitle">dose timing · peak &amp; crash</p>
       </div>
       <div class="headerControls">
         <a class="backLink" href="index.html">← Dashboard</a>
@@ -53,23 +133,502 @@
       </div>
     </header>
 
-    <!-- 3. BUILD YOUR PAGE HERE. Use the shared classes:
-         .card  .btn .btn-primary .btn-ghost  .fieldInput  etc. -->
-    <div class="grid">
-    </div>
+    <div id="app" class="stack"></div>
 
   </div>
 </main>
+<div id="modalRoot"></div>
 
-<!-- Shared theme engine — wires up the switcher + remembers the choice. -->
 <script src="theme.js"></script>
 <script>
-  // Render the theme switcher into the header.
-  document.getElementById('themeSeg').innerHTML = Patron.switcherHtml();
+document.getElementById('themeSeg').innerHTML = Patron.switcherHtml();
 
-  /* ---- Your page's JavaScript goes here. ----
-     Tip: persist data the same way the other pages do, with a
-     uniquely-named localStorage key, e.g. 'mypage_standalone_v1'. */
+/* ============================================================
+ * Drink database — mg of caffeine per typical serving.
+ * Values are commonly-cited averages (manufacturer labels /
+ * USDA / Mayo Clinic caffeine charts); real products vary by
+ * roast, brew strength and region, so the mg is always editable.
+ * ============================================================ */
+const DRINKS = [
+  ['Drip coffee (8oz)',95,'Coffee'],['Drip coffee (12oz)',142,'Coffee'],['Drip coffee (16oz)',190,'Coffee'],
+  ['Espresso (1 shot)',63,'Coffee'],['Espresso (double shot)',126,'Coffee'],['Americano (8oz)',95,'Coffee'],
+  ['Latte / cappuccino (8oz)',63,'Coffee'],['Cold brew (16oz)',200,'Coffee'],['Instant coffee (8oz)',62,'Coffee'],
+  ['Decaf coffee (8oz)',3,'Coffee'],['Starbucks Pike Place (Grande)',310,'Coffee'],['Starbucks Pike Place (Venti)',410,'Coffee'],
+  ['Starbucks Caffè Latte (Grande)',150,'Coffee'],['Starbucks Cold Brew (Grande)',205,'Coffee'],
+  ['Starbucks Doubleshot Espresso (can)',225,'Coffee'],["Dunkin' Original Blend (Medium)",210,'Coffee'],
+  ['McCafé Coffee (Medium)',145,'Coffee'],['Nespresso Vertuo (Large)',120,'Coffee'],
+  ['Black tea (8oz)',47,'Tea'],['Green tea (8oz)',28,'Tea'],['White tea (8oz)',15,'Tea'],['Oolong tea (8oz)',38,'Tea'],
+  ['Matcha (8oz)',70,'Tea'],['Chai tea latte (8oz)',40,'Tea'],['Yerba mate (8oz)',85,'Tea'],['Bottled iced tea (12oz)',30,'Tea'],
+  ['Red Bull (8.4oz can)',80,'Energy drink'],['Red Bull (12oz can)',114,'Energy drink'],['Monster Energy (16oz)',160,'Energy drink'],
+  ['Bang Energy (16oz)',300,'Energy drink'],['Celsius (12oz)',200,'Energy drink'],['Reign Total Body Fuel (16oz)',300,'Energy drink'],
+  ['Rockstar Energy (16oz)',160,'Energy drink'],['G Fuel (16oz, 1 scoop)',150,'Energy drink'],['NOS Energy (16oz)',160,'Energy drink'],
+  ['Ghost Energy (16oz)',200,'Energy drink'],['5-hour Energy (1.93oz shot)',200,'Energy drink'],['Guru Organic Energy (12oz)',100,'Energy drink'],
+  ['Coca-Cola (12oz)',34,'Soda'],['Diet Coke (12oz)',46,'Soda'],['Pepsi (12oz)',38,'Soda'],['Mountain Dew (12oz)',54,'Soda'],
+  ['Dr Pepper (12oz)',41,'Soda'],['Coca-Cola Zero (12oz)',34,'Soda'],
+  ['Pre-workout, mild (1 scoop)',150,'Pre-workout'],['Pre-workout, standard (1 scoop)',200,'Pre-workout'],
+  ['C4 Original (1 scoop)',150,'Pre-workout'],['Ghost Legend (1 scoop)',202,'Pre-workout'],['Bucked Up (1 scoop)',300,'Pre-workout'],
+  ['Total War (1 scoop)',325,'Pre-workout'],
+  ['Caffeine pill (100mg)',100,'Supplement'],['Caffeine pill (200mg)',200,'Supplement'],['Excedrin (2 tablets)',130,'Supplement'],
+  ['NoDoz (1 tablet)',200,'Supplement'],
+  ['Dark chocolate (1oz)',12,'Other'],['Milk chocolate (1oz)',6,'Other'],['Hot chocolate (8oz)',5,'Other'],
+];
+
+/* ============================================================
+ * Helpers
+ * ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function localDateKey(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// Same "day rolls over at 6am" convention the rest of the suite uses (see index.html activeDateKey()).
+function activeDateKey(d){ d=d?new Date(d):new Date(); if(d.getHours()<6) d.setDate(d.getDate()-1); return localDateKey(d); }
+function fmtTime(ts){ return new Date(ts).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); }
+function fmtRel(ms){
+  const mins = Math.round(Math.abs(ms)/60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return mins+'m';
+  const h = Math.floor(mins/60), m = mins%60;
+  return h+'h'+(m?' '+m+'m':'');
+}
+function clamp(n,lo,hi){ return Math.max(lo, Math.min(hi, n)); }
+function nowHHMM(d){ d=d||new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+
+/* ============================================================
+ * Shared profile + health (read-only — set from the Dashboard /
+ * Fitness Band pages). We never write these from here.
+ * ============================================================ */
+function loadProfile(){ try{ return JSON.parse(localStorage.getItem('patron_profile_v1')||'null'); }catch(e){ return null; } }
+function loadHealth(){ try{ return JSON.parse(localStorage.getItem('patron_health_v1')||'null'); }catch(e){ return null; } }
+
+/* ============================================================
+ * Pharmacokinetics
+ * One-compartment, first-order absorption + elimination
+ * (the standard model used for oral caffeine dosing studies):
+ *   C(t) = Dose · ka/(ka−ke) · (e^(−ke·t) − e^(−ka·t))
+ * ka (absorption) is ~6/hr for everyone — caffeine hits peak
+ * blood level in ~35-45 min regardless of body size. ke
+ * (elimination) comes from your half-life, which DOES vary
+ * person to person — age is the one factor we have data for,
+ * so that's what shifts it here.
+ * ============================================================ */
+const KA = 6.0; // /hr — absorption rate constant
+function halfLifeHours(profile){
+  let hl = 5; // hours — the commonly-cited average adult half-life (range ~1.5-9.5h)
+  const age = profile && profile.age != null ? Number(profile.age) : null;
+  if (age != null && isFinite(age)) {
+    if (age >= 65) hl += 1.5;
+    else if (age >= 45) hl += 0.5;
+  }
+  return hl;
+}
+function keFor(profile){ return Math.LN2 / halfLifeHours(profile); }
+function concentrationAt(doseMg, hrs, ke){
+  if (hrs <= 0) return 0;
+  const ka = KA;
+  const d = Math.abs(ka - ke) < 1e-6 ? ka + 0.01 : ka;
+  return doseMg * (d/(d-ke)) * (Math.exp(-ke*hrs) - Math.exp(-d*hrs));
+}
+function tPeakHours(ke){ const ka=KA; return Math.log(ka/ke)/(ka-ke); }
+// Walk forward from the peak until the curve falls to `frac` of its peak value.
+function timeToFraction(doseMg, ke, frac, fromHrs, peakVal){
+  let t = fromHrs;
+  const step = 0.05, maxT = fromHrs + 30;
+  while (t < maxT) {
+    if (concentrationAt(doseMg, t, ke) <= peakVal*frac) return t;
+    t += step;
+  }
+  return maxT;
+}
+function doseTiming(doseMg, ts, ke){
+  const tPeak = tPeakHours(ke);
+  const peakVal = concentrationAt(doseMg, tPeak, ke);
+  const tCrash = timeToFraction(doseMg, ke, 0.5, tPeak, peakVal);   // "crash": half your peak buzz is gone
+  const tClear = timeToFraction(doseMg, ke, 0.125, tCrash, peakVal); // "mostly clear": down to 1/8th
+  return {
+    peakTs: ts + tPeak*3600000, peakVal,
+    crashTs: ts + tCrash*3600000,
+    clearTs: ts + tClear*3600000,
+  };
+}
+function totalActiveAt(logs, ke, atMs){
+  let sum = 0;
+  for (const l of logs) sum += concentrationAt(l.mg, (atMs-l.ts)/3600000, ke);
+  return sum;
+}
+
+/* Predicted usual bedtime — from Fitbit's real bedtime, or wake-time minus
+ * sleep target, or (if the Fitness Band page has no data yet) a plain 11pm
+ * assumption, clearly labelled as such. */
+function bedtimeToday(health){
+  let hh=23, mm=0, assumed=true;
+  if (health) {
+    if (health.bedtime) { const d=new Date(health.bedtime); if(!isNaN(d)){ hh=d.getHours(); mm=d.getMinutes(); assumed=false; } }
+    else if (health.wakeTime && health.sleepTargetHours) {
+      const w=new Date(health.wakeTime);
+      if (!isNaN(w)) { const b=new Date(w.getTime()-health.sleepTargetHours*3600000); hh=b.getHours(); mm=b.getMinutes(); assumed=false; }
+    }
+  }
+  const d = new Date(); d.setHours(hh,mm,0,0);
+  return { date: d, assumed };
+}
+
+/* ============================================================
+ * State
+ * ============================================================ */
+const LS = 'caffeine_standalone_v1';
+function seed(){ return { version:1, logs:[], customDrinks:[], dailyTotals:{} }; }
+function load(){
+  try {
+    const r = localStorage.getItem(LS);
+    const s = r ? Object.assign(seed(), JSON.parse(r)) : seed();
+    if (!Array.isArray(s.logs)) s.logs = [];
+    if (!Array.isArray(s.customDrinks)) s.customDrinks = [];
+    if (!s.dailyTotals || typeof s.dailyTotals!=='object') s.dailyTotals = {};
+    // Prune raw log entries once they're pharmacologically irrelevant (>33h ≈ 6+ half-lives),
+    // but keep their mg in dailyTotals first so the 14-day history stays accurate.
+    const cutoff = Date.now() - 33*3600000;
+    const stale = s.logs.filter(l => l.ts < cutoff);
+    for (const l of stale) { const k = activeDateKey(l.ts); s.dailyTotals[k] = (s.dailyTotals[k]||0) + l.mg; }
+    s.logs = s.logs.filter(l => l.ts >= cutoff).sort((a,b)=>a.ts-b.ts);
+    return s;
+  } catch(e){ return seed(); }
+}
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
+let state = load();
+save();
+const ui = { logOpen:false, tab:'search', query:'', selected:null, mgOverride:'', customName:'', customMg:'', saveCustom:true, logTime:nowHHMM(), whyOpen:false };
+
+/* ============================================================
+ * Derived data (recomputed each render from live profile/health)
+ * ============================================================ */
+function dailyMax(profile){
+  const age = profile && profile.age != null ? Number(profile.age) : null;
+  if (age != null && isFinite(age) && age < 18) return 100; // lower guidance for minors
+  const w = profile && profile.weightKg ? Number(profile.weightKg) : null;
+  // FDA's ~400mg/day is the headline ceiling for healthy adults; commonly-cited sports-nutrition
+  // guidance (~6mg/kg) scales that down for lighter bodies. Use whichever is lower.
+  return (w && isFinite(w)) ? Math.min(400, Math.round(w*6)) : 400;
+}
+
+/* ============================================================
+ * Actions
+ * ============================================================ */
+const A = {
+  openLog(){ ui.logOpen=true; ui.tab='search'; ui.query=''; ui.selected=null; ui.mgOverride=''; ui.customName=''; ui.customMg=''; ui.saveCustom=true; ui.logTime=nowHHMM(); renderModal(); },
+  closeLog(){ ui.logOpen=false; renderModal(); },
+  setTab(t){ ui.tab=t; renderModal(); },
+  pick(name, mg){ ui.selected={name,mg}; ui.mgOverride=String(mg); renderModal(); },
+  confirmLog(){
+    let name, mg;
+    if (ui.tab==='custom') {
+      name = (ui.customName||'').trim();
+      mg = Number(ui.customMg);
+      if (!name) { alert('Give the drink a name.'); return; }
+      if (!isFinite(mg) || mg<=0) { alert('Enter how much caffeine is in it (mg).'); return; }
+      if (ui.saveCustom && !state.customDrinks.some(d=>d.name.toLowerCase()===name.toLowerCase())) {
+        state.customDrinks.push({ id: Date.now()+'-'+Math.round(Math.random()*1e5), name, mg });
+      }
+    } else {
+      if (!ui.selected) { alert('Search and pick a drink, or switch to Custom.'); return; }
+      name = ui.selected.name;
+      mg = Number(ui.mgOverride);
+      if (!isFinite(mg) || mg<=0) { alert('Enter a valid amount of caffeine (mg).'); return; }
+    }
+    const [hh,mm] = (ui.logTime||nowHHMM()).split(':').map(Number);
+    const ts = new Date(); ts.setHours(hh||0, mm||0, 0, 0);
+    const log = { id: Date.now()+'-'+Math.round(Math.random()*1e5), name, mg: Math.round(mg), ts: ts.getTime() };
+    state.logs.push(log);
+    state.logs.sort((a,b)=>a.ts-b.ts);
+    save();
+    ui.logOpen=false;
+    renderModal();
+    render();
+  },
+  delLog(id){
+    state.logs = state.logs.filter(l=>String(l.id)!==String(id));
+    save(); render();
+  },
+  toggleWhy(){ ui.whyOpen=!ui.whyOpen; render(); },
+};
+
+/* ============================================================
+ * Views
+ * ============================================================ */
+function ctxHtml(profile, health){
+  const pills = [];
+  if (profile) {
+    if (profile.weightKg) pills.push(Math.round(profile.weightKg)+' kg');
+    if (profile.age) pills.push(profile.age+' yo');
+    if (profile.sex) pills.push(profile.sex);
+  }
+  if (health && health.sleepHours != null) pills.push('slept '+health.sleepHours.toFixed(1)+'h');
+  const body = pills.length
+    ? pills.map(p=>'<span class="ctxPill">'+esc(p)+'</span>').join('')
+    : '<span class="ctxPill">Using suite defaults (70kg, avg half-life)</span>';
+  return '<div class="card"><div class="ctxRow">'+body+'<a class="ctxLink" href="index.html">'+(profile?'Edit profile':'Set up profile')+' →</a></div></div>';
+}
+
+function heroHtml(profile, health){
+  const ke = keFor(profile||{});
+  const now = Date.now();
+  const active = totalActiveAt(state.logs, ke, now);
+  const recent = state.logs.length ? state.logs[state.logs.length-1] : null;
+
+  let statusCls='clear', statusLbl='Clear', metaHtml='';
+  if (recent) {
+    const t = doseTiming(recent.mg, recent.ts, ke);
+    const untilPeak = t.peakTs - now, untilCrash = t.crashTs - now;
+    if (untilPeak > 15*60000) { statusCls='rising'; statusLbl='Rising'; }
+    else if (untilCrash > 0) { statusCls='peaking'; statusLbl='Peaking'; }
+    else if (active > 5) { statusCls='falling'; statusLbl='Winding down'; }
+    else { statusCls='clear'; statusLbl='Cleared'; }
+    const peakWord = now < t.peakTs ? 'Peak in '+fmtRel(t.peakTs-now) : 'Peaked '+fmtTime(t.peakTs);
+    const crashWord = now < t.crashTs ? 'Crash in '+fmtRel(t.crashTs-now) : 'Crashed '+fmtTime(t.crashTs);
+    metaHtml = '<div class="heroStatRow">'
+      + '<div class="heroStat"><span class="heroStatLabel">Last dose</span><span class="heroStatValue">'+esc(recent.name)+'</span></div>'
+      + '<div class="heroStat"><span class="heroStatLabel">'+ (now<t.peakTs?'Peak at':'Peaked at') +'</span><span class="heroStatValue">'+fmtTime(t.peakTs)+'</span></div>'
+      + '<div class="heroStat"><span class="heroStatLabel">'+ (now<t.crashTs?'Crash at':'Crashed at') +'</span><span class="heroStatValue">'+fmtTime(t.crashTs)+'</span></div>'
+      + '<div class="heroStat"><span class="heroStatLabel">Mostly clear</span><span class="heroStatValue">'+fmtTime(t.clearTs)+'</span></div>'
+      + '</div>'
+      + '<p class="heroSub" style="margin-top:10px">'+peakWord+' · '+crashWord+'</p>';
+  }
+
+  return '<section class="card heroCaf">'
+    + '<div class="heroTop"><span class="cardName">Right now</span><span class="statusPill '+statusCls+'">'+statusLbl+'</span></div>'
+    + '<div class="heroNum">'+Math.round(active)+'<span class="heroNumUnit">mg active</span></div>'
+    + (recent ? '<p class="heroSub">in your system, decaying from your last dose</p>' : '<p class="heroEmpty">No caffeine logged yet — hit "Log caffeine" below to start tracking.</p>')
+    + metaHtml
+    + '</section>';
+}
+
+function dailyBadgeHtml(profile){
+  const total = todayTotalRaw();
+  const max = dailyMax(profile);
+  const pct = clamp((total/max)*100, 0, 100);
+  const over = total > max;
+  const color = over ? 'var(--neg)' : pct>75 ? 'var(--warn)' : 'var(--brand)';
+  let note = '';
+  if (over) note = '<div class="noteBanner neg"><span class="noteIcon">⚠</span><div>You\'ve passed today\'s recommended max (~'+max+'mg). Extra caffeine now raises the risk of jitters, anxiety, a racing heart, or trouble sleeping tonight — consider stopping for today.</div></div>';
+  else if (pct>75) note = '<div class="noteBanner warn"><span class="noteIcon">⚠</span><div>Getting close to today\'s recommended max (~'+max+'mg). Worth pacing the rest of the day.</div></div>';
+  return '<section class="card">'
+    + '<div class="dailyHead"><b>'+Math.round(total)+' mg today</b><span>guideline ~'+max+' mg</span></div>'
+    + '<div class="barTrack" style="margin:10px 0"><div class="barFill" style="width:'+pct+'%;background:'+color+'"></div></div>'
+    + note
+    + '</section>';
+}
+function todayTotalRaw(){
+  const key = activeDateKey();
+  return state.logs.filter(l=>activeDateKey(l.ts)===key).reduce((a,l)=>a+l.mg,0);
+}
+
+function bedtimeNoteHtml(profile, health){
+  const recent = state.logs.length ? state.logs[state.logs.length-1] : null;
+  if (!recent) return '';
+  const ke = keFor(profile||{});
+  const t = doseTiming(recent.mg, recent.ts, ke);
+  const bed = bedtimeToday(health);
+  if (bed.date.getTime() <= Date.now()) return ''; // bedtime already passed today — not actionable
+  const hrsToBed = (bed.date.getTime()-recent.ts)/3600000;
+  if (hrsToBed <= 0) return '';
+  const remaining = concentrationAt(recent.mg, hrsToBed, ke);
+  const frac = t.peakVal>0 ? remaining/t.peakVal : 0;
+  if (frac < 0.25) return '';
+  const pct = Math.round(frac*100);
+  const tone = frac >= 0.5 ? 'neg' : 'warn';
+  return '<div class="noteBanner '+tone+'"><span class="noteIcon">🌙</span><div>Your last dose could still be ~'+pct+'% active at your '+(bed.assumed?'assumed ':'usual ')+'bedtime ('+fmtTime(bed.date.getTime())+(bed.assumed?' — connect sleep tracking on the Fitness Band page for a real bedtime':'')+'). That\'s enough to disrupt sleep for some people — consider an earlier cutoff.</div></div>';
+}
+
+function chartHtml(profile, health){
+  const ke = keFor(profile||{});
+  const now = Date.now();
+  if (!state.logs.length) return '';
+  const fromMs = now - 2*3600000, toMs = now + 14*3600000, stepMs = 15*60000;
+  const pts = [];
+  let maxV = 10;
+  for (let t=fromMs; t<=toMs; t+=stepMs) {
+    const v = totalActiveAt(state.logs, ke, t);
+    pts.push({t,v});
+    if (v>maxV) maxV=v;
+  }
+  const W=680, H=150, pad=6;
+  const x = t => pad + ((t-fromMs)/(toMs-fromMs))*(W-pad*2);
+  const y = v => H-pad - (v/maxV)*(H-pad*2);
+  const line = pts.map((p,i)=>(i===0?'M':'L')+x(p.t).toFixed(1)+','+y(p.v).toFixed(1)).join(' ');
+  const area = line + ' L'+x(pts[pts.length-1].t).toFixed(1)+','+(H-pad)+' L'+x(pts[0].t).toFixed(1)+','+(H-pad)+' Z';
+
+  const nowX = x(now);
+  const bed = bedtimeToday(health);
+  let bedMarker = '';
+  if (bed.date.getTime() >= fromMs && bed.date.getTime() <= toMs) {
+    const bx = x(bed.date.getTime());
+    bedMarker = '<line class="chartBedLine" x1="'+bx+'" x2="'+bx+'" y1="0" y2="'+(H-pad)+'"/>'
+      + '<text class="chartLbl chartLblBed" x="'+bx+'" y="12" text-anchor="middle">bed</text>';
+  }
+  // hour ticks every 3h
+  let ticks = '';
+  const startHour = new Date(fromMs); startHour.setMinutes(0,0,0);
+  for (let t=startHour.getTime(); t<=toMs; t+=3*3600000) {
+    if (t<fromMs) continue;
+    ticks += '<text class="chartLbl" x="'+x(t).toFixed(1)+'" y="'+(H-pad+14)+'" text-anchor="middle">'+new Date(t).toLocaleTimeString([],{hour:'numeric'})+'</text>';
+  }
+
+  return '<section class="card">'
+    + '<span class="cardName">Today\'s curve</span>'
+    + '<p class="cardTag">Total active caffeine, next 14 hours — all logged doses combined</p>'
+    + '<svg class="chartSvg" viewBox="0 0 '+W+' '+(H+16)+'" preserveAspectRatio="none">'
+    + '<path class="chartArea" d="'+area+'"/>'
+    + '<path class="chartLine" d="'+line+'"/>'
+    + '<line class="chartNowLine" x1="'+nowX+'" x2="'+nowX+'" y1="0" y2="'+(H-pad)+'"/>'
+    + bedMarker + ticks
+    + '</svg>'
+    + '</section>';
+}
+
+function logListHtml(profile){
+  const ke = keFor(profile||{});
+  const today = activeDateKey();
+  const logs = state.logs.filter(l=>activeDateKey(l.ts)===today).sort((a,b)=>b.ts-a.ts);
+  if (!logs.length) return '<section class="card"><span class="cardName">Today\'s log</span><p class="logEmpty">Nothing logged yet.</p></section>';
+  const rows = logs.map(l=>{
+    const t = doseTiming(l.mg, l.ts, ke);
+    const meta = fmtTime(l.ts)+' · peak '+fmtTime(t.peakTs)+' · crash '+fmtTime(t.crashTs);
+    return '<div class="logRow"><div class="logMain"><span class="logName">'+esc(l.name)+'</span><span class="logMeta">'+meta+'</span></div>'
+      + '<div class="logRight"><span class="logMg">'+l.mg+' mg</span><button class="logDel" data-act="delLog" data-id="'+esc(l.id)+'" aria-label="Remove">×</button></div></div>';
+  }).join('');
+  return '<section class="card"><span class="cardName">Today\'s log</span>'+rows+'</section>';
+}
+
+function historyHtml(){
+  const days = []; for (let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(activeDateKey(d)); }
+  const totals = days.map(k => {
+    const fromLogs = state.logs.filter(l=>activeDateKey(l.ts)===k).reduce((a,l)=>a+l.mg,0);
+    return fromLogs + (state.dailyTotals[k]||0);
+  });
+  const max = Math.max(400, ...totals);
+  const bars = totals.map(v=>{
+    const h = Math.max(2, (v/max)*64);
+    const cls = v>400 ? 'over' : v>0 ? 'on' : '';
+    return '<div class="histBar '+cls+'" style="height:'+h+'px" title="'+v+' mg"></div>';
+  }).join('');
+  const lbls = days.map(k=>{ const d=new Date(k+'T00:00:00'); return '<span class="histLbl">'+d.toLocaleDateString([],{weekday:'narrow'})+'</span>'; }).join('');
+  return '<section class="card"><span class="cardName">Last 14 days</span>'
+    + '<div class="histBars">'+bars+'</div><div class="histLbls">'+lbls+'</div></section>';
+}
+
+function whyHtml(profile, health){
+  const hl = halfLifeHours(profile||{});
+  const age = profile && profile.age;
+  const w = (profile && profile.weightKg) || 70;
+  const body = ui.whyOpen ? '<div class="whyBody">'
+    + '<div><b>Half-life: '+hl+'h.</b> Base average is 5h'+(age?(age>=65?' + 1.5h for age 65+':(age>=45?' + 0.5h for age 45+':' (no age adjustment under 45)')):' (add your age in the dashboard profile for a tighter estimate)')+'.</div>'
+    + '<div><b>Peak timing (~35-45 min)</b> is the same for everyone — it\'s driven by how fast caffeine leaves your stomach, not your body size.</div>'
+    + '<div><b>Weight ('+Math.round(w)+'kg)</b> doesn\'t change your peak/crash timing — but a given mg dose is more diluted in a larger body, so it feels weaker. We use it to set your daily guideline below (~6mg/kg, capped at 400mg).</div>'
+    + '<div><b>Sex</b> isn\'t applied to the math — research on caffeine clearance by sex is inconsistent enough that we don\'t adjust for it.</div>'
+    + '<div><b>Height</b> isn\'t used — clearance tracks with weight and liver enzyme activity, not height.</div>'
+    + '<div><b>Sleep</b> only feeds the bedtime warning above, not the decay curve itself.</div>'
+    + '<div>Doesn\'t account for pregnancy, smoking, liver conditions or certain medications — those can roughly halve or double how fast you actually clear caffeine.</div>'
+    + '</div>' : '';
+  return '<section class="card"><button class="whyToggle" data-act="toggleWhy"><span>Why these numbers?</span><span class="whyArrow '+(ui.whyOpen?'whyArrowOpen':'')+'">▾</span></button>'+body+'</section>';
+}
+
+function render(){
+  const profile = loadProfile();
+  const health = loadHealth();
+  document.getElementById('app').innerHTML =
+    ctxHtml(profile, health)
+    + heroHtml(profile, health)
+    + '<button type="button" class="btn btn-primary logBtnBig" data-act="openLog">+ Log caffeine</button>'
+    + dailyBadgeHtml(profile)
+    + bedtimeNoteHtml(profile, health)
+    + chartHtml(profile, health)
+    + logListHtml(profile)
+    + historyHtml()
+    + whyHtml(profile, health);
+}
+
+/* ============================================================
+ * Log modal
+ * ============================================================ */
+function searchResultsHtml(){
+  const q = (ui.query||'').trim().toLowerCase();
+  const custom = state.customDrinks.map(d=>[d.name, d.mg, 'My drinks']);
+  const all = custom.concat(DRINKS);
+  const list = q ? all.filter(d=>d[0].toLowerCase().indexOf(q)!==-1) : all;
+  if (!list.length) return '<p class="resEmpty">No matches — try Custom to add it.</p>';
+  return '<div class="searchResults">' + list.slice(0,60).map(d=>{
+    const sel = ui.selected && ui.selected.name===d[0] ? ' sel' : '';
+    return '<button type="button" class="resItem'+sel+'" data-act="pick" data-name="'+esc(d[0])+'" data-mg="'+d[1]+'">'
+      + '<span><span class="resName">'+esc(d[0])+'</span><span class="resCat">'+esc(d[2])+'</span></span>'
+      + '<span class="resMg">'+d[1]+' mg</span></button>';
+  }).join('') + '</div>';
+}
+function pickedHtml(){
+  if (!ui.selected) return '';
+  return '<div class="pickedBox">'
+    + '<div class="fieldGrid">'
+    + '<div class="field fieldFull"><label class="fieldLabel">Caffeine (mg) — edit if your size/strength differs</label>'
+    + '<input class="fieldInput" id="mgOverrideInput" type="number" min="0" step="1" value="'+esc(ui.mgOverride)+'" /></div>'
+    + '<div class="field fieldFull"><label class="fieldLabel">Time</label><input class="fieldInput" id="logTimeInput" type="time" value="'+esc(ui.logTime)+'" /></div>'
+    + '</div></div>';
+}
+function customTabHtml(){
+  return '<div class="fieldGrid">'
+    + '<div class="field fieldFull"><label class="fieldLabel">Drink name</label><input class="fieldInput" id="customNameInput" type="text" placeholder="e.g. Grandma\'s cold brew" value="'+esc(ui.customName)+'" /></div>'
+    + '<div class="field"><label class="fieldLabel">Caffeine (mg)</label><input class="fieldInput" id="customMgInput" type="number" min="0" step="1" placeholder="e.g. 180" value="'+esc(ui.customMg)+'" /></div>'
+    + '<div class="field"><label class="fieldLabel">Time</label><input class="fieldInput" id="logTimeInput2" type="time" value="'+esc(ui.logTime)+'" /></div>'
+    + '<div class="field fieldFull"><label class="checkRow"><input type="checkbox" id="saveCustomInput" '+(ui.saveCustom?'checked':'')+' /> Save to My Drinks for next time</label></div>'
+    + '</div>';
+}
+function modalHtml(){
+  if (!ui.logOpen) return '';
+  return '<div class="overlay" data-act="closeLog"><div class="panel" data-stop="1">'
+    + '<div class="panelHead"><div><div class="panelEyebrow">Log caffeine</div><h2 class="panelTitle">What did you have?</h2></div><button type="button" class="panelClose" data-act="closeLog">×</button></div>'
+    + '<div class="modeSeg"><button type="button" class="modeBtn '+(ui.tab==='search'?'on':'')+'" data-act="tab" data-v="search">Find a drink</button><button type="button" class="modeBtn '+(ui.tab==='custom'?'on':'')+'" data-act="tab" data-v="custom">+ Custom drink</button></div>'
+    + (ui.tab==='search'
+        ? '<input class="fieldInput" id="drinkSearchInput" placeholder="Search coffee, energy drinks, tea…" value="'+esc(ui.query)+'" autocomplete="off" />' + '<div id="searchResultsWrap">'+searchResultsHtml()+'</div>' + pickedHtml()
+        : customTabHtml())
+    + '<p class="panelNote">Almost any amount works here — search gives a typical starting point, but the mg is always yours to edit.</p>'
+    + '<div class="panelActions"><button type="button" class="btn btn-ghost" data-act="closeLog">Cancel</button><button type="button" class="btn btn-primary" data-act="confirmLog">Log it</button></div>'
+    + '</div></div>';
+}
+function renderModal(){
+  document.getElementById('modalRoot').innerHTML = modalHtml();
+  if (ui.logOpen && ui.tab==='search') { const el=document.getElementById('drinkSearchInput'); if (el) el.focus(); }
+}
+
+/* ============================================================
+ * Events
+ * ============================================================ */
+document.addEventListener('click', e=>{
+  const stop = e.target.closest('[data-stop]');
+  const b = e.target.closest('[data-act]');
+  if (!b) { return; }
+  const act = b.dataset.act;
+  if (act==='openLog') A.openLog();
+  else if (act==='closeLog') { if (!stop || e.target.closest('.panelClose') || e.target.closest('.btn-ghost')) A.closeLog(); }
+  else if (act==='tab') A.setTab(b.dataset.v);
+  else if (act==='pick') A.pick(b.dataset.name, Number(b.dataset.mg));
+  else if (act==='confirmLog') A.confirmLog();
+  else if (act==='delLog') A.delLog(b.dataset.id);
+  else if (act==='toggleWhy') A.toggleWhy();
+});
+document.addEventListener('input', e=>{
+  const t = e.target;
+  if (t.id==='drinkSearchInput') { ui.query=t.value; const w=document.getElementById('searchResultsWrap'); if (w) w.innerHTML=searchResultsHtml(); }
+  else if (t.id==='mgOverrideInput') ui.mgOverride=t.value;
+  else if (t.id==='logTimeInput' || t.id==='logTimeInput2') ui.logTime=t.value;
+  else if (t.id==='customNameInput') ui.customName=t.value;
+  else if (t.id==='customMgInput') ui.customMg=t.value;
+});
+document.addEventListener('change', e=>{
+  if (e.target.id==='saveCustomInput') ui.saveCustom = e.target.checked;
+});
+
+/* Live-refresh the hero/chart numbers even with no interaction (caffeine keeps decaying). */
+setInterval(render, 60000);
+
+render();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
+<script src="cloud-sync.js"></script>
 </body>
 </html>
