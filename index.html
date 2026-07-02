@@ -141,6 +141,11 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-ui), -ap
 .cardStat { display:flex; flex-direction:column; gap: 2px; margin-top: auto; }
 .cardStatValue { font-family: var(--font-display); font-weight: 600; font-size: var(--text-xl); letter-spacing: -0.02em; color: var(--fg); font-variant-numeric: tabular-nums; }
 .cardStatLabel { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.fitGraph { position:relative; height: 52px; margin: 2px 0; }
+.fitGraphSvg { width:100%; height:100%; overflow:visible; }
+.fitLegend { display:flex; gap: var(--space-4); margin-top: -2px; }
+.fitLegendItem { display:flex; align-items:center; gap:5px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.fitLegendDot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
 
 /* Vitals tile */
 .vitals { grid-column: span 2; grid-row: span 2; display:flex; flex-direction:column; gap: var(--space-4); padding: var(--space-6); border: 1px solid var(--brand-line); border-radius: var(--radius-lg); background: var(--brand-soft); box-shadow: 0 0 50px -24px var(--brand-glow), var(--card-shadow); }
@@ -451,15 +456,52 @@ function statFor(file){
   } catch (e) {}
   return null;
 }
+// Three running metrics, each its own colour, plotted on one small chart — no
+// dataset switcher, all of it visible at a glance before you click through.
+// Each series is normalized independently (they're on wildly different scales:
+// km, min/km, VO2max) so what's shown is relative trend shape, not magnitude.
+function fitnessGraphHtml(){
+  try {
+    const c = lsGet('fitness_ticker_cache_v1');
+    if (!c) return '';
+    const series = [
+      { key:'dailyKm',   color:'var(--brand)', label:'km',   higherIsBetter:true },
+      { key:'paceTrend', color:'var(--pos)',   label:'pace', higherIsBetter:false },
+      { key:'vo2Trend',  color:'var(--warn)',  label:'vo2',  higherIsBetter:true },
+    ].filter(s => Array.isArray(c[s.key]) && c[s.key].length >= 2);
+    if (!series.length) return '';
+    const w = 160, h = 52, padX = 4, padY = 6;
+    const paths = series.map(s=>{
+      const vals = c[s.key];
+      const min = Math.min.apply(null, vals), max = Math.max.apply(null, vals), range = (max-min) || 1;
+      const n = vals.length;
+      const pts = vals.map((v,i)=>{
+        let norm = (v-min)/range;
+        if (!s.higherIsBetter) norm = 1-norm;
+        const x = padX + (n>1 ? i*((w-padX*2)/(n-1)) : (w-padX*2)/2);
+        const y = h-padY - norm*(h-padY*2);
+        return [x,y];
+      });
+      const d = pts.map((p,i)=> (i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+      const last = pts[pts.length-1];
+      return '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>'
+        + '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.4" fill="' + s.color + '"/>';
+    }).join('');
+    const legend = series.map(s=>'<span class="fitLegendItem"><span class="fitLegendDot" style="background:' + s.color + '"></span>' + s.label + '</span>').join('');
+    return '<div class="fitGraph"><svg class="fitGraphSvg" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden>' + paths + '</svg></div>'
+      + '<div class="fitLegend">' + legend + '</div>';
+  } catch(e){ return ''; }
+}
 function cardHtml(a){
   const st = statFor(a.file);
   const tail = st
     ? '<div class="cardStat"><span class="cardStatValue">' + esc(st.value) + '</span><span class="cardStatLabel">' + esc(st.label) + '</span></div>'
     : '<p class="cardTag">' + esc(a.tag) + '</p>';
+  const graph = a.file === 'fitness.html' ? fitnessGraphHtml() : '';
   return '<a class="card' + (a.wide ? ' tileWide' : '') + '" href="' + a.file + '">'
     + '<span class="cardArrow" aria-hidden>↗</span>'
     + '<div class="cardTop"><span class="cardIcon" aria-hidden>' + a.icon + '</span><span class="cardName">' + esc(a.name) + '</span></div>'
-    + tail + '</a>';
+    + graph + tail + '</a>';
 }
 
 /* ============================================================

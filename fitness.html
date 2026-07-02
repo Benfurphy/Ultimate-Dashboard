@@ -180,10 +180,31 @@ async function syncGarmin(){
   }
   render();
 }
+// Last `days` calendar days (oldest first, today last) of summed run distance —
+// feeds the hub card's mini trend graph; a coarser view than bucketWeeks' rolling window.
+function dailyKmSeries(activities, days){
+  const out = [];
+  const today = new Date();
+  for (let i = days-1; i >= 0; i--){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const key = localDateKey(d);
+    const km = activities.filter(a => localDateKey(new Date(a.ts)) === key).reduce((s,a)=>s+(a.distanceKm||0), 0);
+    out.push(Math.round(km*10)/10);
+  }
+  return out;
+}
 function cacheTicker(){
   try {
     const buckets = bucketWeeks(garmin.activities, 1);
-    localStorage.setItem('fitness_ticker_cache_v1', JSON.stringify({ weekKm: buckets[0].km, ts: Date.now() }));
+    const paceSam = paceSamples(garmin.activities, state.targetHR, 8).slice(-8);
+    const vo2Sam = garmin.activities.filter(a=>a.vo2max!=null).sort((a,b)=>a.ts-b.ts).slice(-8);
+    localStorage.setItem('fitness_ticker_cache_v1', JSON.stringify({
+      weekKm: buckets[0].km,
+      dailyKm: dailyKmSeries(garmin.activities, 7),
+      paceTrend: paceSam.map(s=>Math.round(s.paceMinPerKm*100)/100),
+      vo2Trend: vo2Sam.map(a=>a.vo2max),
+      ts: Date.now()
+    }));
   } catch(e) {}
 }
 
