@@ -1,8 +1,9 @@
 // /api/garmin — all Garmin actions in one function (Vercel's Hobby plan caps a
 // deployment at 12 Serverless Functions, so this folder can't afford 4 separate
 // route files the way WHOOP/Fitbit do). Dispatches on method + payload shape:
-//   GET  /api/garmin                 → today's vitals (like WHOOP/Fitbit's data.js)
-//   GET  /api/garmin?action=logout   → forget the stored session
+//   GET  /api/garmin                    → today's vitals (like WHOOP/Fitbit's data.js)
+//   GET  /api/garmin?action=logout      → forget the stored session
+//   GET  /api/garmin?action=activities  → recent running activities (Fitness tab)
 //   POST /api/garmin  { username, password } → direct login (like a WHOOP/Fitbit "Connect")
 //   POST /api/garmin  { tokens }              → fallback: store tokens from scripts/garmin-get-tokens.js
 const L = require('./_lib');
@@ -92,6 +93,50 @@ async function handleData(req, res) {
   }));
 }
 
+// Garmin's activity list has no "running only" filter that reliably covers every
+// running sub-type (treadmill/trail/track/virtual runs all use different typeKeys),
+// so fetch broadly and filter client-side on the typeKey containing "run".
+function isRun(typeKey) { return /run/i.test(String(typeKey || '')); }
+// "startTimeGMT" comes back as "YYYY-MM-DD HH:mm:ss" (space-separated, already UTC).
+function parseGmt(s) { return s ? new Date(String(s).replace(' ', 'T') + 'Z').getTime() : null; }
+
+async function handleActivities(req, res) {
+  const client = L.clientFromCookies(req);
+  if (!client) { res.statusCode = 200; res.end(JSON.stringify({ connected: false })); return; }
+
+  let raw;
+  try {
+    raw = await client.getActivities(0, 100);
+  } catch (e) {
+    res.statusCode = 200;
+    res.setHeader('Set-Cookie', L.clearTokensCookie(L.isHttps(req)));
+    res.end(JSON.stringify({ connected: false, error: 'expired' }));
+    return;
+  }
+
+  const list = Array.isArray(raw) ? raw : [];
+  const activities = list
+    .filter(a => a && isRun(a.activityType && a.activityType.typeKey))
+    .map(a => {
+      const distanceKm = a.distance != null ? a.distance / 1000 : null;
+      const durationSec = (a.movingDuration || a.duration || 0) || null;
+      const paceMinPerKm = (distanceKm && durationSec) ? (durationSec / 60) / distanceKm : null;
+      return {
+        id: a.activityId,
+        name: a.activityName || 'Run',
+        ts: parseGmt(a.startTimeGMT) || Date.now(),
+        distanceKm, durationSec,
+        avgHR: a.averageHR != null ? Math.round(a.averageHR) : null,
+        vo2max: a.vO2MaxValue != null ? Math.round(a.vO2MaxValue) : null,
+        paceMinPerKm,
+      };
+    })
+    .sort((x, y) => y.ts - x.ts);
+
+  res.statusCode = 200;
+  res.end(JSON.stringify({ connected: true, source: 'garmin', ts: Date.now(), activities }));
+}
+
 function handleLogout(req, res) {
   res.setHeader('Set-Cookie', L.clearTokensCookie(L.isHttps(req)));
   res.statusCode = 200;
@@ -129,7 +174,9 @@ module.exports = async (req, res) => {
   const url = new URL(req.url, 'http://x');
 
   if (req.method === 'GET') {
-    if (url.searchParams.get('action') === 'logout') { handleLogout(req, res); return; }
+    const action = url.searchParams.get('action');
+    if (action === 'logout') { handleLogout(req, res); return; }
+    if (action === 'activities') { await handleActivities(req, res); return; }
     await handleData(req, res);
     return;
   }

@@ -1,7 +1,8 @@
 // GET /api/whoop/data — refreshes the access token (rotating the stored refresh
 // token), fetches recent recovery / sleep / cycle, and returns a vitals payload:
 //   • latest scalars (recovery, hrv, rhr, sleepPerf, sleepHours, strain) — used by the hub
-//   • short history arrays (recoveryTrend, sleepDebt7d, strainWeeklyAvg) — used by whoop.html
+//   • short history arrays (recoveryTrend, sleepDebt7d, strainWeeklyAvg) — currently unused,
+//     kept in case a future page wants trend detail beyond the hub's latest-scalars view
 // Same-origin, so the browser hits it with no CORS.
 const L = require('./_lib');
 

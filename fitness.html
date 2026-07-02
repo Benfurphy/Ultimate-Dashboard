@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0C0C12" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Patron" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+
+<title>Fitness · Chasing Legendary Status</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("patron_theme")||"nocturne");}catch(e){document.documentElement.setAttribute("data-theme","nocturne");}</script>
+
+<link rel="stylesheet" href="theme.css" />
+
+<style>
+  .shell { max-width: 760px; }
+  .stack { display:flex; flex-direction:column; gap: var(--space-4); }
+
+  .ctxRow { display:flex; flex-wrap:wrap; gap: var(--space-2); align-items:center; }
+  .ctxPill { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-pill); font-family:var(--font-mono); font-size:11px; color:var(--muted-strong); }
+  .ctxLink { margin-left:auto; font-size:12px; color:var(--brand); text-decoration:none; font-weight:600; }
+  .ctxLink:hover { text-decoration:underline; }
+  .hrEdit { width:52px; background:transparent; border:0; border-bottom:1px dashed var(--brand-line); color:var(--brand); font-family:var(--font-mono); font-size:11px; font-weight:700; text-align:center; padding:0 2px; }
+  .hrEdit:focus { outline:none; border-bottom-color:var(--brand); }
+
+  .cardHead { display:flex; align-items:baseline; justify-content:space-between; gap:var(--space-3); flex-wrap:wrap; }
+  .heroNum { font-family:var(--font-display); font-weight:600; font-size:52px; line-height:1; letter-spacing:-0.03em; font-variant-numeric:tabular-nums; margin: var(--space-2) 0 2px; }
+  .heroNumUnit { font-size: 18px; color:var(--muted); font-weight:600; margin-left:6px; }
+  .heroSub { font-size:13px; color:var(--muted-strong); margin:0; }
+  .heroStatRow { display:flex; gap: var(--space-6); flex-wrap:wrap; padding-top:var(--space-3); margin-top:var(--space-3); border-top:1px solid var(--border); }
+  .heroStat { display:flex; flex-direction:column; gap:3px; }
+  .heroStatLabel { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .heroStatValue { font-family:var(--font-display); font-weight:600; font-size:var(--text-lg); letter-spacing:-0.01em; }
+  .heroEmpty { text-align:center; padding: var(--space-6) 0; color:var(--muted); font-size:14px; }
+
+  .noteBanner { display:flex; gap:10px; align-items:flex-start; padding: var(--space-3) var(--space-4); border-left:3px solid var(--border-strong); background:var(--surface); border-radius:0 var(--radius-sm) var(--radius-sm) 0; font-size:12.5px; line-height:1.55; color:var(--muted-strong); }
+  .noteBanner.warn { border-left-color:var(--warn); background:var(--warn-soft); }
+  .noteBanner.pos { border-left-color:var(--pos); background:var(--pos-soft); }
+  .noteIcon { flex-shrink:0; font-size:15px; line-height:1.4; }
+
+  /* ---- weekly load bars ---- */
+  .weekBars { display:flex; align-items:flex-end; gap:6px; height:96px; margin: var(--space-3) 0 6px; }
+  .weekBarWrap { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:4px; }
+  .weekBar { width:100%; border-radius:3px 3px 0 0; background:var(--track); min-height:2px; transition: height .4s var(--ease-premium); }
+  .weekBar.on { background:var(--brand); }
+  .weekBar.cur { background:var(--brand-2); }
+  .weekDays { font-family:var(--font-mono); font-size:8px; color:var(--muted); }
+  .weekLbls { display:flex; gap:6px; }
+  .weekLbl { flex:1; text-align:center; font-family:var(--font-mono); font-size:8px; color:var(--muted); }
+
+  /* ---- chart (pace / benchmark trend) ---- */
+  .chartSvg { display:block; width:100%; height:140px; overflow:visible; }
+  .chartArea { fill: var(--brand-soft); }
+  .chartLine { fill:none; stroke: var(--brand); stroke-width:2; }
+  .chartDot { fill: var(--brand); }
+  .chartLbl { font-family: var(--font-mono); font-size:9px; fill: var(--muted); }
+  .chartEmpty { text-align:center; padding: var(--space-5) 0; color:var(--muted); font-size:13px; font-style:italic; }
+
+  /* ---- runs / benchmark lists ---- */
+  .rowItem { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); padding:10px 0; border-bottom:1px solid var(--border); }
+  .rowItem:last-child { border-bottom:0; }
+  .rowMain { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .rowName { font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rowMeta { font-family:var(--font-mono); font-size:11px; color:var(--muted); }
+  .rowRight { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  .rowVal { font-family:var(--font-mono); font-weight:700; color:var(--brand); font-size:13px; white-space:nowrap; }
+  .rowDel { appearance:none; background:transparent; border:0; color:var(--muted); font-size:18px; line-height:1; cursor:pointer; padding:4px 8px; border-radius:6px; }
+  .rowDel:hover { color:var(--neg); }
+  .rowEmpty { text-align:center; padding: var(--space-5) 0; color:var(--muted); font-size:13px; font-style:italic; }
+  .hrBadge { font-family:var(--font-mono); font-size:9px; font-weight:700; color:var(--brand); background:var(--brand-soft); border:1px solid var(--brand-line); border-radius:var(--radius-pill); padding:1px 6px; margin-left:6px; }
+
+  /* ---- why toggle ---- */
+  .whyToggle { appearance:none; width:100%; display:flex; align-items:center; justify-content:space-between; background:transparent; border:0; color:var(--muted-strong); font-family:var(--font-ui); font-size:13px; cursor:pointer; padding:2px 0; }
+  .whyArrow { transition: transform var(--duration) var(--ease-premium); }
+  .whyArrowOpen { transform: rotate(180deg); }
+  .whyBody { display:flex; flex-direction:column; gap:8px; padding-top: var(--space-3); font-size:12px; color:var(--muted); line-height:1.5; }
+  .whyBody b { color:var(--muted-strong); }
+
+  .skel { color:var(--muted); font-size:13px; text-align:center; padding:var(--space-6) 0; }
+</style>
+</head>
+<body>
+<main class="page grain-overlay">
+  <div class="shell">
+
+    <header class="header">
+      <div>
+        <h1 class="title">Fitness</h1>
+        <p class="subtitle">run load · pace @ heart rate · vo2max</p>
+      </div>
+      <div class="headerControls">
+        <a class="backLink" href="index.html">← Dashboard</a>
+        <span id="themeSeg"></span>
+      </div>
+    </header>
+
+    <div id="app" class="stack"></div>
+
+  </div>
+</main>
+<div id="modalRoot"></div>
+
+<script src="theme.js"></script>
+<script>
+document.getElementById('themeSeg').innerHTML = Patron.switcherHtml();
+
+/* ============================================================
+ * Helpers
+ * ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function localDateKey(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtDate(ts){ return new Date(ts).toLocaleDateString([], {month:'short', day:'numeric'}); }
+function fmtPace(minPerKm){
+  if (minPerKm == null || !isFinite(minPerKm) || minPerKm<=0) return '—';
+  const m = Math.floor(minPerKm), s = Math.round((minPerKm-m)*60);
+  return m+':'+String(s).padStart(2,'0')+'/km';
+}
+function clamp(n,lo,hi){ return Math.max(lo, Math.min(hi, n)); }
+const DIST_PRESETS = [['1 mile',1.60934],['5K',5],['10K',10],['Half marathon',21.0975],['Marathon',42.195],['Custom',null]];
+function parseTimeStr(s){
+  const parts = String(s||'').trim().split(':').map(x=>Number(x));
+  if (!parts.length || parts.some(x=>!isFinite(x))) return null;
+  let secs = 0;
+  for (const p of parts) secs = secs*60 + p;
+  return secs > 0 ? secs : null;
+}
+function fmtTimeStr(totalSec){
+  totalSec = Math.round(totalSec);
+  const h = Math.floor(totalSec/3600), m = Math.floor((totalSec%3600)/60), s = totalSec%60;
+  return h>0 ? h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0') : m+':'+String(s).padStart(2,'0');
+}
+
+/* ============================================================
+ * Persisted state — target HR + manual benchmarks. Garmin activity
+ * data itself is never persisted here; it's fetched live each visit.
+ * ============================================================ */
+const LS = 'fitness_standalone_v1';
+function seed(){ return { version:1, targetHR:144, benchmarks:[] }; }
+function load(){
+  try {
+    const r = localStorage.getItem(LS);
+    const s = r ? Object.assign(seed(), JSON.parse(r)) : seed();
+    if (!Array.isArray(s.benchmarks)) s.benchmarks = [];
+    if (!s.targetHR) s.targetHR = 144;
+    return s;
+  } catch(e){ return seed(); }
+}
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
+let state = load();
+const ui = { benchOpen:false, benchPreset:'5K', benchDistance:'5', benchTime:'', benchDate:localDateKey(), whyOpen:false };
+
+/* ============================================================
+ * Garmin data — fetched once per page load, cached only in memory.
+ * ============================================================ */
+const garmin = { status:'loading', activities:[] }; // status: loading | connected | disconnected | error
+async function syncGarmin(){
+  try {
+    const r = await fetch('/api/garmin?action=activities', { cache:'no-store' });
+    const j = await r.json();
+    if (j && j.connected) {
+      garmin.status = 'connected';
+      garmin.activities = Array.isArray(j.activities) ? j.activities : [];
+      cacheTicker();
+    } else {
+      garmin.status = 'disconnected';
+    }
+  } catch(e) {
+    garmin.status = 'error';
+  }
+  render();
+}
+function cacheTicker(){
+  try {
+    const buckets = bucketWeeks(garmin.activities, 1);
+    localStorage.setItem('fitness_ticker_cache_v1', JSON.stringify({ weekKm: buckets[0].km, ts: Date.now() }));
+  } catch(e) {}
+}
+
+/* ============================================================
+ * Derived running metrics
+ * ============================================================ */
+// Rolling 7-day buckets ending today (index 0 = this week so far), not calendar weeks —
+// same rolling-window convention the rest of the suite uses (see caffeine.html / water.html).
+function bucketWeeks(activities, weeks){
+  const now = Date.now(), DAY = 86400000, WEEK = 7*DAY;
+  const buckets = [];
+  for (let i=0; i<weeks; i++) {
+    const toTs = now - i*WEEK, fromTs = toTs - WEEK;
+    const inWindow = activities.filter(a => a.ts > fromTs && a.ts <= toTs);
+    const km = inWindow.reduce((a,r)=>a+(r.distanceKm||0),0);
+    const days = new Set(inWindow.map(a=>localDateKey(new Date(a.ts))));
+    buckets.push({ fromTs, toTs, km, runDays: days.size, runCount: inWindow.length });
+  }
+  return buckets;
+}
+function weekStreak(buckets){
+  let streak = 0;
+  let start = buckets[0] && buckets[0].runCount>0 ? 0 : 1; // this week in progress doesn't break the streak yet
+  for (let i=start; i<buckets.length; i++) {
+    if (buckets[i] && buckets[i].runCount>0) streak++; else break;
+  }
+  return streak;
+}
+// Runs whose OVERALL average HR lands within ±band of the target are treated as
+// "similar effort" samples — we don't have per-second HR/pace streams, just each
+// run's average, so this is an approximation (see the Why box).
+function paceSamples(activities, targetHR, band){
+  return activities
+    .filter(a => a.avgHR != null && a.paceMinPerKm != null && Math.abs(a.avgHR - targetHR) <= band)
+    .slice().sort((a,b)=>a.ts-b.ts);
+}
+function paceTrendNote(samples){
+  if (samples.length < 2) return null;
+  const n = Math.min(3, Math.floor(samples.length/2));
+  const early = samples.slice(0, n), recent = samples.slice(-n);
+  const avg = arr => arr.reduce((a,x)=>a+x.paceMinPerKm,0)/arr.length;
+  const deltaMinPerKm = avg(early) - avg(recent); // positive = recent is faster (lower pace)
+  const deltaSec = Math.round(deltaMinPerKm*60);
+  if (Math.abs(deltaSec) < 5) return { tone:'flat', text:'Holding steady — no meaningful change yet.' };
+  if (deltaSec > 0) return { tone:'pos', text: deltaSec+'s/km faster than your earlier runs at this effort — looking fitter.' };
+  return { tone:'warn', text: Math.abs(deltaSec)+'s/km slower than earlier runs at this effort.' };
+}
+function latestVo2(activities){
+  const withVo2 = activities.filter(a=>a.vo2max!=null).sort((a,b)=>b.ts-a.ts);
+  if (!withVo2.length) return null;
+  const current = withVo2[0];
+  const older = withVo2.find(a => a.ts <= current.ts - 45*86400000 && a.vo2max !== current.vo2max);
+  return { value: current.vo2max, ts: current.ts, older: older ? older.vo2max : null, olderTs: older ? older.ts : null };
+}
+
+/* ============================================================
+ * Actions
+ * ============================================================ */
+const A = {
+  setTargetHR(v){ const n=Math.round(Number(v)); if (isFinite(n) && n>=80 && n<=220) { state.targetHR=n; save(); render(); } },
+  openBench(){ ui.benchOpen=true; ui.benchPreset='5K'; ui.benchDistance='5'; ui.benchTime=''; ui.benchDate=localDateKey(); renderModal(); },
+  closeBench(){ ui.benchOpen=false; renderModal(); },
+  setBenchPreset(label, km){ ui.benchPreset=label; ui.benchDistance = km!=null ? String(km) : ''; renderModal(); },
+  confirmBench(){
+    const distanceKm = Number(ui.benchDistance);
+    const timeSec = parseTimeStr(ui.benchTime);
+    if (!isFinite(distanceKm) || distanceKm<=0) { alert('Enter a valid distance.'); return; }
+    if (!timeSec) { alert('Enter your time as mm:ss (or h:mm:ss).'); return; }
+    const d = ui.benchDate ? new Date(ui.benchDate+'T12:00:00') : new Date();
+    state.benchmarks.push({ id: Date.now()+'-'+Math.round(Math.random()*1e5), label: ui.benchPreset, distanceKm, timeSec, ts: d.getTime() });
+    state.benchmarks.sort((a,b)=>a.ts-b.ts);
+    save();
+    ui.benchOpen=false;
+    renderModal(); render();
+  },
+  delBench(id){ state.benchmarks = state.benchmarks.filter(b=>String(b.id)!==String(id)); save(); render(); },
+  toggleWhy(){ ui.whyOpen=!ui.whyOpen; render(); },
+};
+
+/* ============================================================
+ * Views
+ * ============================================================ */
+function ctxHtml(){
+  const connLabel = garmin.status==='connected' ? 'Garmin connected' : garmin.status==='loading' ? 'Checking Garmin…' : garmin.status==='error' ? 'Garmin sync failed' : 'Garmin not connected';
+  return '<div class="card"><div class="ctxRow">'
+    + '<span class="ctxPill">'+esc(connLabel)+'</span>'
+    + '<span class="ctxPill">pace @ <input class="hrEdit" id="targetHRInput" type="number" min="80" max="220" value="'+state.targetHR+'" /> bpm</span>'
+    + (garmin.status!=='connected' ? '<a class="ctxLink" href="index.html">Connect Garmin →</a>' : '')
+    + '</div></div>';
+}
+
+function loadHtml(){
+  if (garmin.status==='loading') return '<section class="card"><p class="skel">Loading your runs from Garmin…</p></section>';
+  if (garmin.status!=='connected') return '<section class="card"><p class="heroEmpty">Connect Garmin from the dashboard to see your running load.</p></section>';
+  const recentFirst = bucketWeeks(garmin.activities, 12); // index 0 = this week
+  const streak = weekStreak(recentFirst);
+  const buckets = recentFirst.slice().reverse(); // oldest → newest for the chart
+  const thisWeek = buckets[buckets.length-1];
+  const maxKm = Math.max(1, ...buckets.map(b=>b.km));
+  const bars = buckets.map((b,i)=>{
+    const h = Math.max(2, (b.km/maxKm)*80);
+    const cls = i===buckets.length-1 ? 'cur' : b.km>0 ? 'on' : '';
+    return '<div class="weekBarWrap"><div class="weekBar '+cls+'" style="height:'+h+'px" title="'+b.km.toFixed(1)+' km"></div><span class="weekDays">'+(b.runDays||'')+'</span></div>';
+  }).join('');
+  return '<section class="card">'
+    + '<div class="cardHead"><span class="cardName">This week</span></div>'
+    + '<div class="heroNum">'+thisWeek.km.toFixed(1)+'<span class="heroNumUnit">km</span></div>'
+    + '<p class="heroSub">'+thisWeek.runCount+' run'+(thisWeek.runCount===1?'':'s')+' so far this week</p>'
+    + '<div class="heroStatRow"><div class="heroStat"><span class="heroStatLabel">Streak</span><span class="heroStatValue">'+streak+' wk'+(streak===1?'':'s')+'</span></div>'
+    + '<div class="heroStat"><span class="heroStatLabel">12wk avg</span><span class="heroStatValue">'+(buckets.reduce((a,b)=>a+b.km,0)/buckets.length).toFixed(1)+' km/wk</span></div></div>'
+    + '<div class="weekBars">'+bars+'</div>'
+    + '<div class="weekLbls"><span class="weekLbl">12w ago</span><span class="weekLbl"></span><span class="weekLbl"></span><span class="weekLbl"></span><span class="weekLbl"></span><span class="weekLbl"></span><span class="weekLbl"></span><span class="weekLbl"></span><span class="weekLbl"></span><span class="weekLbl"></span><span class="weekLbl"></span><span class="weekLbl">this wk</span></div>'
+    + '<p class="cardTag" style="margin-top:10px">bar height = km that week · number below = days run</p>'
+    + '</section>';
+}
+
+function paceChartSvg(samples){
+  if (samples.length < 2) return '<p class="chartEmpty">Need at least 2 runs near '+state.targetHR+'bpm to plot a trend — keep logging runs.</p>';
+  const W=680, H=120, pad=8;
+  const fromTs = samples[0].ts, toTs = samples[samples.length-1].ts;
+  const span = Math.max(1, toTs-fromTs);
+  const paces = samples.map(s=>s.paceMinPerKm);
+  const minP = Math.min(...paces), maxP = Math.max(...paces, minP+0.3);
+  const x = ts => pad + ((ts-fromTs)/span)*(W-pad*2);
+  const y = p => pad + ((p-minP)/(maxP-minP))*(H-pad*2); // faster (lower pace) draws higher — intuitive "up = fitter"
+  const line = samples.map((s,i)=>(i===0?'M':'L')+x(s.ts).toFixed(1)+','+y(s.paceMinPerKm).toFixed(1)).join(' ');
+  const area = line+' L'+x(toTs).toFixed(1)+','+(H-pad)+' L'+x(fromTs).toFixed(1)+','+(H-pad)+' Z';
+  const dots = samples.map(s=>'<circle class="chartDot" cx="'+x(s.ts).toFixed(1)+'" cy="'+y(s.paceMinPerKm).toFixed(1)+'" r="2.5"/>').join('');
+  return '<svg class="chartSvg" viewBox="0 0 '+W+' '+(H+14)+'" preserveAspectRatio="none">'
+    + '<path class="chartArea" d="'+area+'"/><path class="chartLine" d="'+line+'"/>'+dots
+    + '<text class="chartLbl" x="'+pad+'" y="'+(H+12)+'">'+fmtDate(fromTs)+'</text>'
+    + '<text class="chartLbl" x="'+(W-pad)+'" y="'+(H+12)+'" text-anchor="end">'+fmtDate(toTs)+'</text>'
+    + '</svg>';
+}
+function paceHtml(){
+  if (garmin.status!=='connected') return '';
+  const samples = paceSamples(garmin.activities, state.targetHR, 8);
+  const note = paceTrendNote(samples);
+  return '<section class="card">'
+    + '<div class="cardHead"><span class="cardName">Pace @ '+state.targetHR+' bpm</span><span class="cardTag">'+samples.length+' matching run'+(samples.length===1?'':'s')+'</span></div>'
+    + '<p class="cardTag">Runs that averaged within ±8bpm of your target, plotted over time</p>'
+    + paceChartSvg(samples)
+    + (note ? '<div class="noteBanner '+(note.tone==='pos'?'pos':note.tone==='warn'?'warn':'')+'" style="margin-top:var(--space-3)"><span class="noteIcon">'+(note.tone==='pos'?'📈':note.tone==='warn'?'📉':'➖')+'</span><div>'+esc(note.text)+'</div></div>' : '')
+    + '</section>';
+}
+
+function vo2Html(){
+  if (garmin.status!=='connected') return '';
+  const v = latestVo2(garmin.activities);
+  if (!v) return '<section class="card"><span class="cardName">VO2max</span><p class="cardTag">No VO2max reading yet — Garmin attaches one to some runs automatically, not every run.</p></section>';
+  let trend = '';
+  if (v.older != null) {
+    const diff = v.value - v.older;
+    trend = (diff>0?'up ':'down ')+Math.abs(diff)+' from '+v.older+' on '+fmtDate(v.olderTs);
+  }
+  return '<section class="card"><div class="cardHead"><span class="cardName">VO2max</span><span class="cardTag">as of '+fmtDate(v.ts)+'</span></div>'
+    + '<div class="heroNum" style="font-size:40px">'+v.value+'</div>'
+    + '<p class="heroSub">Garmin\'s own estimate — updates itself in the background whenever it recalculates, no action needed from you'+(trend?' · '+esc(trend):'')+'.</p>'
+    + '</section>';
+}
+
+function benchListHtml(){
+  const list = state.benchmarks.slice().sort((a,b)=>b.ts-a.ts);
+  if (!list.length) return '<p class="rowEmpty">No benchmark logged yet.</p>';
+  return list.map(b=>{
+    const pace = (b.timeSec/60)/b.distanceKm;
+    return '<div class="rowItem"><div class="rowMain"><span class="rowName">'+esc(b.label)+' · '+b.distanceKm+'km</span><span class="rowMeta">'+fmtDate(b.ts)+' · '+fmtTimeStr(b.timeSec)+'</span></div>'
+      + '<div class="rowRight"><span class="rowVal">'+fmtPace(pace)+'</span><button class="rowDel" data-act="delBench" data-id="'+esc(b.id)+'" aria-label="Remove">×</button></div></div>';
+  }).join('');
+}
+function benchChartHtml(){
+  const list = state.benchmarks.slice().sort((a,b)=>a.ts-b.ts);
+  if (list.length < 2) return '';
+  const samples = list.map(b=>({ ts:b.ts, paceMinPerKm:(b.timeSec/60)/b.distanceKm }));
+  return paceChartSvg(samples);
+}
+function benchHtml(){
+  const last = state.benchmarks.slice().sort((a,b)=>b.ts-a.ts)[0];
+  const stale = last && (Date.now()-last.ts) > 6*7*86400000;
+  return '<section class="card">'
+    + '<div class="cardHead"><span class="cardName">Benchmark</span><button type="button" class="btn btn-primary" data-act="openBench">+ Log benchmark</button></div>'
+    + '<p class="cardTag">Your own time-trial number — the "hard" check every 4-6 weeks against the passive trend above.</p>'
+    + (!last ? '<div class="noteBanner" style="margin-top:var(--space-3)"><span class="noteIcon">⏱</span><div>Log a fixed-distance time trial (e.g. a 5K) to get your first hard number.</div></div>'
+        : stale ? '<div class="noteBanner warn" style="margin-top:var(--space-3)"><span class="noteIcon">⏱</span><div>Your last benchmark was '+fmtDate(last.ts)+' — it\'s been 6+ weeks, might be time to re-test.</div></div>' : '')
+    + benchChartHtml()
+    + benchListHtml()
+    + '</section>';
+}
+
+function whyHtml(){
+  const body = ui.whyOpen ? '<div class="whyBody">'
+    + '<div><b>Weekly km</b> sums distance from every Garmin activity typed as a run (treadmill, trail, track, outdoor) over rolling 7-day windows, not calendar weeks.</div>'
+    + '<div><b>Streak</b> counts consecutive weeks with at least one run. This week in progress never breaks it until it\'s actually over.</div>'
+    + '<div><b>Pace @ '+state.targetHR+'bpm</b> isn\'t a true within-run reading — Garmin\'s activity list only gives us each run\'s overall average HR and pace, not a full stream. So "matching" runs are ones whose average HR landed within ±8bpm of your target; we trend pace across just those.</div>'
+    + '<div><b>VO2max</b> is Garmin\'s own Firstbeat-modeled estimate, attached to a run whenever Garmin recalculates it (not every run) — shown as-is.</div>'
+    + '<div><b>Benchmark</b> is entirely your own logged number, independent of Garmin — the ground-truth check on whether the passive trend is real.</div>'
+    + '</div>' : '';
+  return '<section class="card"><button class="whyToggle" data-act="toggleWhy"><span>Why these numbers?</span><span class="whyArrow '+(ui.whyOpen?'whyArrowOpen':'')+'">▾</span></button>'+body+'</section>';
+}
+
+function render(){
+  document.getElementById('app').innerHTML =
+    ctxHtml() + loadHtml() + paceHtml() + vo2Html() + benchHtml() + whyHtml();
+}
+
+/* ============================================================
+ * Benchmark modal
+ * ============================================================ */
+function modalHtml(){
+  if (!ui.benchOpen) return '';
+  const presets = DIST_PRESETS.map(([label,km])=>'<button type="button" class="btn '+(ui.benchPreset===label?'btn-primary':'btn-ghost')+'" data-act="benchPreset" data-label="'+esc(label)+'" data-km="'+(km==null?'':km)+'" style="padding:6px 12px;font-size:12px">'+label+'</button>').join('');
+  return '<div class="overlay" data-act="closeBench"><div class="panel" data-stop="1">'
+    + '<div class="panelHead"><div><div class="panelEyebrow">Benchmark</div><h2 class="panelTitle">Log a time trial</h2></div><button type="button" class="panelClose" data-act="closeBench">×</button></div>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:var(--space-4)">'+presets+'</div>'
+    + '<div class="fieldGrid">'
+    + '<div class="field"><label class="fieldLabel">Distance (km)</label><input class="fieldInput" id="benchDistanceInput" type="number" min="0" step="0.01" value="'+esc(ui.benchDistance)+'" '+(ui.benchPreset!=='Custom'?'readonly':'')+' /></div>'
+    + '<div class="field"><label class="fieldLabel">Time (mm:ss)</label><input class="fieldInput" id="benchTimeInput" type="text" placeholder="e.g. 24:10" value="'+esc(ui.benchTime)+'" /></div>'
+    + '<div class="field fieldFull"><label class="fieldLabel">Date</label><input class="fieldInput" id="benchDateInput" type="date" value="'+esc(ui.benchDate)+'" /></div>'
+    + '</div>'
+    + '<p class="panelNote">Pace is calculated automatically from distance + time.</p>'
+    + '<div class="panelActions"><button type="button" class="btn btn-ghost" data-act="closeBench">Cancel</button><button type="button" class="btn btn-primary" data-act="confirmBench">Log it</button></div>'
+    + '</div></div>';
+}
+function renderModal(){ document.getElementById('modalRoot').innerHTML = modalHtml(); }
+
+/* ============================================================
+ * Events
+ * ============================================================ */
+document.addEventListener('click', e=>{
+  const stop = e.target.closest('[data-stop]');
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const act = b.dataset.act;
+  if (act==='openBench') A.openBench();
+  else if (act==='closeBench') { if (!stop || e.target.closest('.panelClose') || e.target.closest('.btn-ghost')) A.closeBench(); }
+  else if (act==='benchPreset') A.setBenchPreset(b.dataset.label, b.dataset.km ? Number(b.dataset.km) : null);
+  else if (act==='confirmBench') A.confirmBench();
+  else if (act==='delBench') A.delBench(b.dataset.id);
+  else if (act==='toggleWhy') A.toggleWhy();
+});
+document.addEventListener('input', e=>{
+  const t = e.target;
+  if (t.id==='targetHRInput') { /* commit on change, not every keystroke */ }
+  else if (t.id==='benchDistanceInput') ui.benchDistance=t.value;
+  else if (t.id==='benchTimeInput') ui.benchTime=t.value;
+  else if (t.id==='benchDateInput') ui.benchDate=t.value;
+});
+document.addEventListener('change', e=>{
+  if (e.target.id==='targetHRInput') A.setTargetHR(e.target.value);
+});
+
+render();
+syncGarmin();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
+<script src="cloud-sync.js"></script>
+</body>
+</html>

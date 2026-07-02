@@ -11,7 +11,7 @@ On the GitHub page, click **Fork** (top-right). This makes your own copy.
 - Click **Add New → Project**, pick your forked repo, and click **Deploy**.
 - Done — you get a live link like `https://your-app.vercel.app`.
 
-At this point the whole dashboard already works: finance, water, gym,
+At this point the whole dashboard already works: fitness, water, gym,
 supplements, goals, progress — all of it. Your data is saved in your browser.
 
 ## 3. (Optional) Fitness-band sync — Whoop / Fitbit

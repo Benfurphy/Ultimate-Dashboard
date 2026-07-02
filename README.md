@@ -15,10 +15,9 @@ No fork, no setup — you get a live `your-app.vercel.app` link in about a minut
 | App | File | What it does |
 |---|---|---|
 | **Hub** | `index.html` | Bento launcher · onboarding · "Today's vitals" · live stats |
-| Finance | `finance.html` | Net worth, subscriptions, orders, wishlist (+ live FX, optional stock prices, AI statement import) |
+| Fitness | `fitness.html` | Running load, pace-at-heart-rate trend, VO2max, periodic time-trial benchmarks (Garmin) |
 | Gym | `gym.html` | Progressive-overload coach (optional cloud sync via *your own* Supabase) |
 | Supplements | `supplements.html` | Your stack + a profile-driven recommender |
-| Whoop | `whoop.html` | Recovery / sleep / strain / HRV (real Whoop OAuth when deployed) |
 | Water | `water.html` | Daily hydration target |
 | Creator | `creator.html` | Posting schedule, accounts, analytics |
 | Goals | `goals.html` | Goals & streaks |
@@ -40,7 +39,7 @@ Everything lives in **your browser's `localStorage`** — there is no central da
 and no account. Two consequences, stated plainly:
 
 - **Private:** your data and API keys never leave your device (except calls you make
-  directly to Finnhub / Anthropic / Whoop with your own credentials).
+  directly to Whoop / Garmin with your own credentials).
 - **Per-browser, not synced:** a different device = different data, and clearing your
   browser data erases it. Treat it like a local app, not a cloud service.
 
@@ -51,11 +50,9 @@ profile), `patron_health_v1` (vitals — Whoop / Apple Watch / manual).
 
 | Feature | Where | How |
 |---|---|---|
-| **Whoop** live recovery/sleep/strain | Hub vitals + `whoop.html` | Server-side OAuth — see [`WHOOP_SETUP.md`](WHOOP_SETUP.md). Needs Vercel + env vars. |
+| **Whoop** live recovery/sleep/strain | Hub vitals | Server-side OAuth — see [`WHOOP_SETUP.md`](WHOOP_SETUP.md). Needs Vercel + env vars. |
 | **Apple Watch** | Hub vitals | No web API exists — enter your latest Health readings manually. |
 | **Manual vitals** | Hub vitals | Type recovery + sleep; feeds the supplement recommender. |
-| **Stock prices** (Finance) | Finance ⚙ settings | Paste a free [Finnhub](https://finnhub.io) key (stored in your browser). |
-| **AI statement import** (Finance) | Finance ⚙ settings | Paste an [Anthropic](https://console.anthropic.com) key (Haiku, downscaled images — cheap). |
 | **Gym sync** | Gym → ⚙ Settings → Cloud sync | Optional — paste *your own* Supabase URL + publishable key (else local-only). See below. |
 
 ### Environment variables (Vercel → Project → Settings → Environment Variables)
@@ -65,7 +62,7 @@ WHOOP_CLIENT_ID=         # only if you want live Whoop sync
 WHOOP_CLIENT_SECRET=
 ```
 
-See [`.env.example`](.env.example). Finnhub/Anthropic keys are entered in-app (not env vars).
+See [`.env.example`](.env.example).
 
 ### Gym cloud sync — use your own Supabase (optional)
 
@@ -94,9 +91,9 @@ with anyone else). One-time setup:
 
 ## Local vs deployed
 
-- **Local (`file://`):** everything works *except* Whoop live sync (needs the `/api`
-  functions). The Whoop tab falls back to manual entry / sample preview.
-- **Deployed (Vercel):** the full thing, including Whoop OAuth.
+- **Local (`file://`):** everything works *except* Whoop/Garmin/Fitbit live sync (needs
+  the `/api` functions). The Hub vitals card falls back to manual entry.
+- **Deployed (Vercel):** the full thing, including Whoop OAuth and Garmin login.
 
 ## License
 

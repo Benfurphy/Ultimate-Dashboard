@@ -69,4 +69,4 @@ end $$;
 - Device that HAS your data → ☁ → **⤒ Push this device up**
 - Other device → ☁ → **⤓ Pull cloud down**
 
-Done. Finance, water, gym, goals, supplements + progress photos now sync across phone + PC automatically.
+Done. Fitness, water, gym, goals, supplements + progress photos now sync across phone + PC automatically.
