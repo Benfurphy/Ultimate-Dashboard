@@ -152,8 +152,8 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-ui), -ap
 .vitalsBody { display:flex; align-items:center; gap: var(--space-6); flex-wrap: wrap; }
 .recRing { position: relative; width: 132px; height: 132px; display:grid; place-items:center; flex-shrink:0; }
 .recRing svg { position:absolute; inset:0; transform: rotate(-90deg); }
-.recTrack { fill:none; stroke: var(--track); stroke-width: 9; }
-.recFill { fill:none; stroke: currentColor; stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset 700ms var(--ease-premium); filter: drop-shadow(0 0 10px currentColor); }
+.recTrack { fill:none; stroke: var(--track); stroke-width: 13; }
+.recFill { fill:none; stroke: currentColor; stroke-width: 13; stroke-linecap: round; transition: stroke-dashoffset 700ms var(--ease-premium); filter: drop-shadow(0 0 18px currentColor) drop-shadow(0 0 5px currentColor); }
 .recRing[data-tone="good"] .recFill { color: var(--pos); }
 .recRing[data-tone="watch"] .recFill { color: var(--warn); }
 .recRing[data-tone="low"] .recFill { color: var(--neg); }

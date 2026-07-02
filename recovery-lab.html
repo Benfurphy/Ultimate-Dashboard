@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  ============================================================================
+  RECOVERY RING LAB — a visual playground for the "Recovery" style circular
+  gauge (the ring that shows Recovery / Sleep / HRV / Resting HR / Training
+  Readiness as a 0–100% dial, seen on the dashboard hub's vitals tile).
+
+  WHAT THIS IS
+  10 cards, each a completely different animation/rendering technique for
+  the same ring concept: classic SVG arc, conic-gradient sweep, segmented
+  dial, liquid fill, particle halo, needle gauge, pulse orb, dual ring,
+  counting number, and radial spectrum bars.
+
+  The sticky top bar controls apply to every card at once: accent color
+  (swatches + custom picker), which metric feeds the ring (pulls a live
+  value from the dashboard's shared vitals record if one exists, else a
+  demo number), a value slider to scrub the % by hand, ring thickness,
+  the entrance-animation easing curve, and a font-pairing swatch for the
+  headings/labels — plus glow and auto-loop toggles.
+
+  WORKFLOW
+  Open this file directly in a browser (no build step, no server). Look
+  at the cards, decide which style(s) you like. Then tell Claude things
+  like "card 3, make the ticks thinner" or "combine card 1's ring with
+  card 9's number reveal" — reference cards by the number in their corner
+  tag. Claude edits this file, you refresh the browser to see the result.
+  Nothing here is wired into the real dashboard; it's a sandbox for
+  finding a look before porting it into index.html's vitals tile.
+  ============================================================================
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recovery Ring Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,400;1,9..144,500&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000;
+  --fg:#fff;
+  --muted:#8b8f9a;
+  --muted-strong:#c2c5cc;
+  --line:rgba(255,255,255,.10);
+  --line-soft:rgba(255,255,255,.06);
+  --card-bg:rgba(255,255,255,.03);
+  --accent:#6EE7B7;
+  --stroke-w:14px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --dur:1400ms;
+  --font-display:'Instrument Serif', serif;
+  --font-display-style:italic;
+  --font-ui:'Inter', sans-serif;
+  --font-mono:'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);}
+body{
+  font-family:var(--font-ui);
+  min-height:100vh;
+  position:relative;
+  overflow-x:hidden;
+}
+body::before,body::after{
+  content:'';
+  position:fixed;
+  width:60vw;height:60vw;
+  border-radius:50%;
+  pointer-events:none;
+  z-index:0;
+  filter:blur(10px);
+  opacity:.16;
+  background:radial-gradient(circle, var(--accent), transparent 70%);
+  transition:background 500ms ease;
+}
+body::before{ top:-20vw; left:-15vw; }
+body::after{ bottom:-25vw; right:-15vw; opacity:.10; }
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky; top:0; z-index:50;
+  background:rgba(0,0,0,.55);
+  backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  border-bottom:1px solid var(--line);
+}
+.topbarInner{
+  max-width:1600px; margin:0 auto;
+  padding:16px 24px;
+  display:flex; align-items:center; gap:22px; flex-wrap:wrap;
+}
+.brand{ margin-right:6px; }
+.brandTitle{ font-family:var(--font-display); font-style:var(--font-display-style); font-size:22px; letter-spacing:-0.01em; }
+.brandSub{ font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-top:2px; }
+.controls{ display:flex; align-items:center; gap:20px; flex-wrap:wrap; flex:1; }
+.ctrl{ display:flex; flex-direction:column; gap:6px; }
+.ctrlLabel{ font-family:var(--font-mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.swatches{ display:flex; align-items:center; gap:6px; }
+.swatch{
+  width:20px; height:20px; border-radius:50%; cursor:pointer;
+  border:2px solid rgba(255,255,255,.18);
+  transition:transform 220ms var(--ease), border-color 220ms;
+}
+.swatch:hover{ transform:scale(1.14); }
+.swatch.active{ border-color:#fff; transform:scale(1.18); }
+.colorPicker{
+  width:24px; height:24px; border-radius:50%; border:2px solid var(--line);
+  background:none; padding:0; cursor:pointer; overflow:hidden;
+}
+.colorPicker::-webkit-color-swatch-wrapper{ padding:0; }
+.colorPicker::-webkit-color-swatch{ border:none; border-radius:50%; }
+select.ctrlSelect{
+  background:rgba(255,255,255,.05); color:var(--fg);
+  border:1px solid var(--line); border-radius:8px;
+  padding:7px 10px; font-family:var(--font-ui); font-size:12px;
+  cursor:pointer; outline:none;
+}
+select.ctrlSelect:hover{ border-color:rgba(255,255,255,.28); }
+.sliderRow{ display:flex; align-items:center; gap:8px; }
+input[type=range]{
+  -webkit-appearance:none; appearance:none;
+  width:110px; height:3px; border-radius:2px;
+  background:rgba(255,255,255,.15); outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+  background:var(--accent); cursor:pointer; border:2px solid #000;
+  box-shadow:0 0 0 1px rgba(255,255,255,.25);
+}
+.sliderVal{ font-family:var(--font-mono); font-size:11px; color:var(--muted-strong); min-width:34px; }
+.toggleRow{ display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; }
+.toggleRow input{ accent-color:var(--accent); width:14px; height:14px; cursor:pointer; }
+.toggleRow span{ font-family:var(--font-ui); font-size:12px; color:var(--muted-strong); }
+.liveBadge{ font-family:var(--font-mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; padding:2px 7px; border-radius:20px; border:1px solid var(--line); color:var(--muted); }
+.liveBadge.live{ color:var(--accent); border-color:color-mix(in srgb, var(--accent) 45%, transparent); }
+.btnReplayAll{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.06em;
+  background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--fg);
+  border-radius:8px; padding:8px 12px; cursor:pointer;
+  transition:background 180ms, border-color 180ms;
+  margin-left:auto;
+}
+.btnReplayAll:hover{ background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.3); }
+
+/* ---------- grid + cards ---------- */
+.grid{
+  position:relative; z-index:1;
+  max-width:1600px; margin:0 auto;
+  padding:28px 24px 80px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(420px,1fr));
+  gap:20px;
+}
+.card{
+  background:var(--card-bg);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:18px 18px 20px;
+  position:relative;
+  overflow:hidden;
+  transition:border-color 220ms var(--ease), transform 220ms var(--ease);
+}
+.card:hover{ border-color:rgba(255,255,255,.2); }
+.cardTop{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.tag{ font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.cardActions{ display:flex; gap:6px; }
+.iconBtn{
+  width:26px; height:26px; border-radius:8px;
+  background:rgba(255,255,255,.05); border:1px solid var(--line-soft);
+  color:var(--muted-strong); cursor:pointer; font-size:13px;
+  display:flex; align-items:center; justify-content:center;
+  transition:background 180ms, color 180ms, transform 180ms var(--ease);
+}
+.iconBtn:hover{ background:rgba(255,255,255,.12); color:#fff; }
+.iconBtn:active{ transform:scale(.9); }
+.stage{ position:relative; height:280px; display:flex; align-items:center; justify-content:center; }
+.ringSvg{ width:260px; height:260px; overflow:visible; }
+.track{ stroke:rgba(255,255,255,.08); }
+.fill{ stroke:var(--accent); }
+.ringCenter{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
+.ringCenter.low{ justify-content:flex-end; padding-bottom:8px; }
+.ringNum{ font-family:var(--font-display); font-style:var(--font-display-style); font-size:46px; line-height:1; letter-spacing:-0.02em; }
+.ringCap{ font-family:var(--font-mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); margin-top:8px; }
+.cardDesc{ font-family:var(--font-ui); font-size:12px; color:var(--muted); line-height:1.5; margin:6px 4px 0; text-align:center; }
+
+body.no-glow .glowEl{ filter:none !important; }
+.glowEl{ filter:drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 65%, transparent)); }
+
+/* card 2 — conic sweep */
+.conicRing{ position:absolute; width:230px; height:230px; left:50%; top:50%; transform:translate(-50%,-50%); border-radius:50%;
+  -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - var(--sw)), #000 calc(100% - var(--sw)));
+  mask:radial-gradient(farthest-side, transparent calc(100% - var(--sw)), #000 calc(100% - var(--sw)));
+}
+body.no-glow .conicRing{ filter:none !important; }
+
+/* card 3 — segmented dial */
+.segWrap{ position:absolute; inset:0; }
+.seg{ position:absolute; left:50%; top:50%; width:5px; height:15px; margin-left:-2.5px; margin-top:-7.5px; border-radius:3px; background:rgba(255,255,255,.5); transition:none; }
+
+/* card 4 — liquid fill */
+.liquidWrap{ position:absolute; width:238px; height:238px; left:50%; top:50%; transform:translate(-50%,-50%); border-radius:50%; overflow:hidden; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.02); }
+.liquidFill{ position:absolute; left:-20%; right:-20%; height:400px; top:238px; }
+.liquidWave{ position:absolute; left:-40%; width:180%; height:34px; top:-14px; border-radius:45%; opacity:.9; }
+.liquidWave.w1{ animation:waveRock 4.5s ease-in-out infinite; }
+.liquidWave.w2{ animation:waveRock 6.5s ease-in-out infinite reverse; opacity:.5; top:-9px; height:26px; }
+@keyframes waveRock{ 0%,100%{ transform:rotate(-5deg) translateX(-3%);} 50%{ transform:rotate(5deg) translateX(3%);} }
+.liquidNum{ position:relative; z-index:2; mix-blend-mode:normal; text-shadow:0 2px 18px rgba(0,0,0,.6); }
+
+/* card 5 — particle halo */
+.dotWrap{ position:absolute; inset:0; }
+.dot{ position:absolute; left:50%; top:50%; width:7px; height:7px; margin:-3.5px; border-radius:50%; background:rgba(255,255,255,.5); transition:none; }
+
+/* card 6 — needle gauge */
+.needle{ transform-origin:120px 120px; }
+
+/* card 9 — counting number */
+.counterBar{ width:180px; height:5px; border-radius:3px; background:rgba(255,255,255,.1); overflow:hidden; margin-top:16px; }
+.counterFill{ height:100%; border-radius:3px; width:0%; }
+.counterNum{ font-family:var(--font-display); font-style:var(--font-display-style); font-size:56px; line-height:1; }
+
+/* card 10 — radial spectrum */
+.barWrap{ position:absolute; inset:0; }
+.bar{ position:absolute; left:50%; top:50%; width:4px; height:22px; margin-left:-2px; border-radius:2px; background:rgba(255,255,255,.5); transform-origin:50% 100%; transition:none; }
+
+@media (max-width:520px){
+  .grid{ grid-template-columns:1fr; padding:20px 14px 60px; }
+  .controls{ gap:14px; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbarInner">
+    <div class="brand">
+      <div class="brandTitle">Recovery Ring Lab</div>
+      <div class="brandSub">10 ring styles · shared controls</div>
+    </div>
+
+    <div class="controls">
+      <div class="ctrl">
+        <span class="ctrlLabel">Color</span>
+        <div class="swatches" id="swatches"></div>
+      </div>
+
+      <div class="ctrl">
+        <span class="ctrlLabel">Custom</span>
+        <input type="color" class="colorPicker" id="customColor" value="#6EE7B7">
+      </div>
+
+      <div class="ctrl">
+        <span class="ctrlLabel">Metric <span class="liveBadge" id="liveBadge">demo</span></span>
+        <select class="ctrlSelect" id="metricSelect"></select>
+      </div>
+
+      <div class="ctrl">
+        <span class="ctrlLabel">Value</span>
+        <div class="sliderRow">
+          <input type="range" id="valueSlider" min="0" max="100" step="1" value="68">
+          <span class="sliderVal" id="valueVal">68%</span>
+        </div>
+      </div>
+
+      <div class="ctrl">
+        <span class="ctrlLabel">Thickness</span>
+        <div class="sliderRow">
+          <input type="range" id="strokeSlider" min="4" max="28" step="1" value="14">
+          <span class="sliderVal" id="strokeVal">14px</span>
+        </div>
+      </div>
+
+      <div class="ctrl">
+        <span class="ctrlLabel">Animation</span>
+        <select class="ctrlSelect" id="easeSelect">
+          <option value="smooth">Smooth</option>
+          <option value="spring">Spring</option>
+          <option value="bounce">Bounce</option>
+          <option value="linear">Linear</option>
+          <option value="slowmo">Slow-mo</option>
+        </select>
+      </div>
+
+      <div class="ctrl">
+        <span class="ctrlLabel">Font pairing</span>
+        <select class="ctrlSelect" id="fontSelect">
+          <option value="rowan">Rowan (serif/mono)</option>
+          <option value="editorial">Editorial (Fraunces)</option>
+          <option value="technical">Technical (mono)</option>
+          <option value="modern">Modern (grotesk)</option>
+        </select>
+      </div>
+
+      <label class="toggleRow"><input type="checkbox" id="glowToggle" checked><span>Glow</span></label>
+      <label class="toggleRow"><input type="checkbox" id="loopToggle"><span>Auto-loop</span></label>
+
+      <button class="btnReplayAll" id="replayAllBtn">⟳ replay all</button>
+    </div>
+  </div>
+</div>
+
+<main class="grid" id="grid"></main>
+
+<script>
+(function(){
+'use strict';
+
+/* ============================================================
+ * Metrics — reads the dashboard's shared vitals record
+ * (patron_health_v1, written by index.html's "Add vitals" flow
+ * / Whoop / Fitbit / Garmin sync) if present; falls back to a
+ * demo value per metric otherwise. Purely read-only — this lab
+ * never writes back to that key.
+ * ============================================================ */
+const HEALTH_KEY = 'patron_health_v1';
+function readHealth(){
+  try { const r = localStorage.getItem(HEALTH_KEY); return r ? JSON.parse(r) : null; } catch(e){ return null; }
+}
+function clamp(v,min,max){ return Math.min(max, Math.max(min, v)); }
+
+const METRICS = {
+  recovery:  { label:'Recovery',            field:'recovery',          demo:68, normalize:v=>v },
+  sleep:     { label:'Sleep Score',         field:'sleepPerf',         demo:82, normalize:v=>v },
+  hrv:       { label:'HRV',                 field:'hrv',               demo:55, normalize:v=>((v-20)/(100-20))*100 },
+  rhr:       { label:'Resting HR',          field:'rhr',               demo:62, normalize:v=>((80-v)/(80-40))*100 },
+  readiness: { label:'Training Readiness',  field:'trainingReadiness', demo:74, normalize:v=>v },
+};
+
+function metricValue(key){
+  const m = METRICS[key];
+  const h = readHealth();
+  const raw = h && h[m.field] != null ? h[m.field] : null;
+  const pct = raw != null ? Math.round(clamp(m.normalize(raw), 0, 100)) : m.demo;
+  return { pct, isLive: raw != null };
+}
+
+/* ============================================================
+ * Easing — one JS function per animation-style option, sampled
+ * every animation frame so every card style (arcs, bars, dots,
+ * counting numbers, needles) animates on the exact same curve.
+ * ============================================================ */
+function cubicBezier(p1x,p1y,p2x,p2y){
+  function sampleCurveX(t){ const c=3*p1x, b=3*(p2x-p1x)-c, a=1-c-b; return ((a*t+b)*t+c)*t; }
+  function sampleCurveY(t){ const c=3*p1y, b=3*(p2y-p1y)-c, a=1-c-b; return ((a*t+b)*t+c)*t; }
+  return function(x){
+    let t=x;
+    for(let i=0;i<8;i++){
+      const xEst=sampleCurveX(t)-x;
+      if(Math.abs(xEst)<1e-5) break;
+      const c=3*p1x, b=3*(p2x-p1x)-c, a=1-c-b;
+      const d=(3*a*t+2*b)*t+c;
+      if(Math.abs(d)<1e-6) break;
+      t -= xEst/d;
+    }
+    return sampleCurveY(clamp(t,0,1));
+  };
+}
+function easeOutBounce(t){
+  const n1=7.5625, d1=2.75;
+  if(t<1/d1) return n1*t*t;
+  if(t<2/d1) return n1*(t-=1.5/d1)*t+.75;
+  if(t<2.5/d1) return n1*(t-=2.25/d1)*t+.9375;
+  return n1*(t-=2.625/d1)*t+.984375;
+}
+const EASING = {
+  smooth: { css:'cubic-bezier(.16,1,.3,1)',      dur:1300, fn:cubicBezier(.16,1,.3,1) },
+  spring: { css:'cubic-bezier(.34,1.56,.64,1)',   dur:1200, fn:cubicBezier(.34,1.56,.64,1) },
+  bounce: { css:'cubic-bezier(.68,-0.55,.265,1.55)', dur:1500, fn:easeOutBounce },
+  linear: { css:'linear',                          dur:1100, fn:t=>t },
+  slowmo: { css:'cubic-bezier(.25,.1,.25,1)',      dur:2600, fn:cubicBezier(.25,.1,.25,1) },
+};
+
+const FONTS = {
+  rowan:     { display:"'Instrument Serif', serif", style:'italic', ui:"'Inter', sans-serif",       mono:"'JetBrains Mono', monospace" },
+  editorial: { display:"'Fraunces', serif",          style:'italic', ui:"'Inter', sans-serif",       mono:"'JetBrains Mono', monospace" },
+  technical: { display:"'JetBrains Mono', monospace", style:'normal', ui:"'IBM Plex Sans', sans-serif", mono:"'JetBrains Mono', monospace" },
+  modern:    { display:"'Space Grotesk', sans-serif", style:'normal', ui:"'Inter', sans-serif",       mono:"'JetBrains Mono', monospace" },
+};
+
+const SWATCHES = ['#6EE7B7','#FB7185','#38BDF8','#FBBF24','#A78BFA','#A3E635'];
+
+/* ============================================================
+ * Global state — every control writes here; cards read it
+ * directly inside their per-frame update() function.
+ * ============================================================ */
+const state = {
+  accent:'#6EE7B7',
+  metric:'recovery',
+  metricLabel:'Recovery',
+  pct:68,
+  strokeWidth:14,
+  easing:'smooth',
+  font:'rowan',
+  glow:true,
+  autoLoop:false,
+};
+
+/* ============================================================
+ * Small DOM helpers
+ * ============================================================ */
+function svgEl(tag, attrs){
+  const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) n.setAttribute(k, attrs[k]);
+  return n;
+}
+function el(tag, attrs, ...children){
+  const n = document.createElement(tag);
+  if(attrs) for(const k in attrs){
+    if(k==='class') n.className = attrs[k];
+    else n.setAttribute(k, attrs[k]);
+  }
+  children.flat().forEach(c=>{ if(c==null) return; n.appendChild(typeof c==='string' ? document.createTextNode(c) : c); });
+  return n;
+}
+function polar(cx,cy,r,angle){ const a=(angle-90)*Math.PI/180; return { x:cx+r*Math.cos(a), y:cy+r*Math.sin(a) }; }
+function arcPath(cx,cy,r,startAngle,endAngle){
+  const start = polar(cx,cy,r,endAngle);
+  const end = polar(cx,cy,r,startAngle);
+  const largeArc = (endAngle-startAngle) <= 180 ? '0' : '1';
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y}`;
+}
+function ringCenter(numClass, capClass, low){
+  return el('div', {class:'ringCenter'+(low?' low':'')},
+    el('div', {class:numClass||'ringNum'}, '0%'),
+    el('div', {class:capClass||'ringCap'}, '—'));
+}
+function stagger(i, target, entranceP){
+  if(target<=0 || i>=target) return 0;
+  const t_i = i/target;
+  return clamp((entranceP - t_i)*6, 0, 1);
+}
+
+/* ============================================================
+ * Card definitions — 10 distinct takes on the ring. Each has:
+ *   build(stage)             -> creates DOM once, returns refs
+ *   update(refs,p,elapsed)   -> called every animation frame
+ *   desc                     -> one-line technique caption
+ *   snippet(refs)            -> code copied by the "copy" button
+ * ============================================================ */
+const CARD_DEFS = [
+{
+  id:'arc', name:'Classic Arc',
+  desc:'SVG circle, stroke-dasharray sweep with a rounded cap — the reference style.',
+  build(stage){
+    const sw = state.strokeWidth, r = 96 - sw/2, c = 2*Math.PI*r;
+    const svg = svgEl('svg', {viewBox:'0 0 240 240', class:'ringSvg'});
+    const track = svgEl('circle', {cx:120, cy:120, r, 'stroke-width':sw, class:'track', fill:'none'});
+    const fillC = svgEl('circle', {cx:120, cy:120, r, 'stroke-width':sw, class:'fill glowEl', fill:'none', 'stroke-linecap':'round', transform:'rotate(-90 120 120)', 'stroke-dasharray':c, 'stroke-dashoffset':c});
+    svg.appendChild(track); svg.appendChild(fillC);
+    const center = ringCenter();
+    stage.appendChild(svg); stage.appendChild(center);
+    return { fillC, numEl:center.querySelector('.ringNum'), capEl:center.querySelector('.ringCap'), c };
+  },
+  update(refs, p){
+    refs.fillC.setAttribute('stroke-dashoffset', refs.c*(1-(state.pct/100)*p));
+    refs.numEl.textContent = Math.round(state.pct*p)+'%';
+    refs.capEl.textContent = state.metricLabel;
+  },
+  snippet(refs){ const sw=state.strokeWidth,r=96-sw/2,c=2*Math.PI*r;
+    return `<svg viewBox="0 0 240 240">\n  <circle cx="120" cy="120" r="${r}" stroke="rgba(255,255,255,.08)" stroke-width="${sw}" fill="none"/>\n  <circle cx="120" cy="120" r="${r}" stroke="${state.accent}" stroke-width="${sw}" fill="none" stroke-linecap="round" transform="rotate(-90 120 120)" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-state.pct/100)}"/>\n</svg>`;
+  }
+},
+{
+  id:'conic', name:'Conic Sweep',
+  desc:'A masked conic-gradient div — no SVG, the ring is pure CSS.',
+  build(stage){
+    const ring = el('div', {class:'conicRing glowEl'});
+    ring.style.setProperty('--sw', state.strokeWidth+'px');
+    const center = ringCenter();
+    stage.appendChild(ring); stage.appendChild(center);
+    return { ring, numEl:center.querySelector('.ringNum'), capEl:center.querySelector('.ringCap') };
+  },
+  update(refs, p){
+    const deg = 360*(state.pct/100)*p;
+    refs.ring.style.background = `conic-gradient(${state.accent} ${deg}deg, rgba(255,255,255,.08) ${deg}deg)`;
+    refs.numEl.textContent = Math.round(state.pct*p)+'%';
+    refs.capEl.textContent = state.metricLabel;
+  },
+  snippet(){ const deg=360*(state.pct/100);
+    return `<div style="\n  width:220px;height:220px;border-radius:50%;\n  background:conic-gradient(${state.accent} ${deg.toFixed(1)}deg, rgba(255,255,255,.08) ${deg.toFixed(1)}deg);\n  -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - ${state.strokeWidth}px), #000 calc(100% - ${state.strokeWidth}px));\n"></div>`;
+  }
+},
+{
+  id:'segments', name:'Segmented Dial',
+  desc:'40 ticks lit in a chasing sweep, like a Whoop/Fitbit-style dial.',
+  N:40,
+  build(stage){
+    const wrap = el('div', {class:'segWrap'});
+    const ticks = [];
+    for(let i=0;i<this.N;i++){
+      const t = el('div', {class:'seg'});
+      t.style.transform = `rotate(${(360/this.N)*i}deg) translateY(-98px)`;
+      wrap.appendChild(t); ticks.push(t);
+    }
+    const center = ringCenter();
+    stage.appendChild(wrap); stage.appendChild(center);
+    return { ticks, numEl:center.querySelector('.ringNum'), capEl:center.querySelector('.ringCap') };
+  },
+  update(refs, p){
+    const target = Math.round((state.pct/100)*this.N);
+    refs.ticks.forEach((t,i)=>{
+      const lit = stagger(i, target, p);
+      t.style.opacity = 0.1 + 0.9*lit;
+      t.style.background = lit>0.05 ? state.accent : 'rgba(255,255,255,.5)';
+      t.style.boxShadow = (lit>0.5 && state.glow) ? `0 0 8px ${state.accent}` : 'none';
+    });
+    refs.numEl.textContent = Math.round(state.pct*p)+'%';
+    refs.capEl.textContent = state.metricLabel;
+  },
+  snippet(){ return `<!-- ${this.N} div.seg ticks, each: rotate(${'i*'+(360/this.N).toFixed(1)}deg) translateY(-98px);\n     lit ticks get background:${state.accent} + a chase-in delay based on index -->`; }
+},
+{
+  id:'liquid', name:'Liquid Fill',
+  desc:'Two rotating blobs clipped to a circle — the fill line tracks value.',
+  build(stage){
+    const wrap = el('div', {class:'liquidWrap'});
+    const fill = el('div', {class:'liquidFill'});
+    const w1 = el('div', {class:'liquidWave w1'});
+    const w2 = el('div', {class:'liquidWave w2'});
+    fill.appendChild(w1); fill.appendChild(w2);
+    wrap.appendChild(fill);
+    const center = ringCenter('ringNum liquidNum', 'ringCap liquidNum');
+    stage.appendChild(wrap); stage.appendChild(center);
+    return { fill, w1, w2, numEl:center.querySelector('.ringNum'), capEl:center.querySelector('.ringCap') };
+  },
+  update(refs, p){
+    const containerH = 238;
+    const pct = state.pct*p;
+    refs.fill.style.top = (containerH*(1-pct/100))+'px';
+    refs.fill.style.background = state.accent;
+    refs.w1.style.background = state.accent;
+    refs.w2.style.background = state.accent;
+    refs.numEl.textContent = Math.round(pct)+'%';
+    refs.capEl.textContent = state.metricLabel;
+  },
+  snippet(){ return `<!-- .liquidWrap { border-radius:50%; overflow:hidden; }\n     .liquidFill { position:absolute; top:${(238*(1-state.pct/100)).toFixed(0)}px; height:400px; background:${state.accent}; }\n     two rotating border-radius:45% waves sit right at the fill's top edge for texture -->`; }
+},
+{
+  id:'particles', name:'Particle Halo',
+  desc:'32 dots ringing the center, each blooming in on its own delay.',
+  N:32,
+  build(stage){
+    const wrap = el('div', {class:'dotWrap'});
+    const dots = [];
+    for(let i=0;i<this.N;i++){
+      const d = el('div', {class:'dot'});
+      d.style.transform = `rotate(${(360/this.N)*i}deg) translateY(-94px) scale(.6)`;
+      wrap.appendChild(d); dots.push({el:d, deg:(360/this.N)*i});
+    }
+    const center = ringCenter();
+    stage.appendChild(wrap); stage.appendChild(center);
+    return { dots, numEl:center.querySelector('.ringNum'), capEl:center.querySelector('.ringCap') };
+  },
+  update(refs, p){
+    const target = Math.round((state.pct/100)*this.N);
+    refs.dots.forEach((d,i)=>{
+      const lit = stagger(i, target, p);
+      d.el.style.transform = `rotate(${d.deg}deg) translateY(-94px) scale(${0.5+0.7*lit})`;
+      d.el.style.background = lit>0.05 ? state.accent : 'rgba(255,255,255,.4)';
+      d.el.style.boxShadow = (lit>0.5 && state.glow) ? `0 0 9px ${state.accent}` : 'none';
+      d.el.style.opacity = 0.35+0.65*lit;
+    });
+    refs.numEl.textContent = Math.round(state.pct*p)+'%';
+    refs.capEl.textContent = state.metricLabel;
+  },
+  snippet(){ return `<!-- ${this.N} div.dot elements at rotate(i*${(360/this.N).toFixed(1)}deg) translateY(-94px);\n     dots below the value threshold scale up + light to ${state.accent} in sequence -->`; }
+},
+{
+  id:'needle', name:'Needle Gauge',
+  desc:'A 270° speedometer dial with a rotating needle and tick marks.',
+  build(stage){
+    const sw = state.strokeWidth, r = 90;
+    const svg = svgEl('svg', {viewBox:'0 0 240 240', class:'ringSvg'});
+    const track = svgEl('path', {d:arcPath(120,120,r,-135,135), stroke:'rgba(255,255,255,.08)', 'stroke-width':sw, fill:'none', 'stroke-linecap':'round'});
+    const fillP = svgEl('path', {d:arcPath(120,120,r,-135,135), stroke:state.accent, 'stroke-width':sw, fill:'none', 'stroke-linecap':'round', class:'glowEl'});
+    svg.appendChild(track); svg.appendChild(fillP);
+    for(let i=0;i<6;i++){
+      const a = -135 + i*54;
+      const p1 = polar(120,120,r+sw/2+4,a), p2 = polar(120,120,r+sw/2+10,a);
+      svg.appendChild(svgEl('line', {x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y, stroke:'rgba(255,255,255,.25)', 'stroke-width':2}));
+    }
+    const hub = svgEl('circle', {cx:120, cy:120, r:7, fill:'#000', stroke:state.accent, 'stroke-width':2});
+    const needle = svgEl('line', {x1:120, y1:120, x2:120, y2:120-r+6, stroke:'#fff', 'stroke-width':3, 'stroke-linecap':'round', class:'needle glowEl'});
+    svg.appendChild(needle); svg.appendChild(hub);
+    const len = fillP.getTotalLength();
+    const center = ringCenter('ringNum', 'ringCap', true);
+    stage.appendChild(svg); stage.appendChild(center);
+    return { fillP, needle, len, numEl:center.querySelector('.ringNum'), capEl:center.querySelector('.ringCap') };
+  },
+  update(refs, p){
+    const frac = (state.pct/100)*p;
+    refs.fillP.setAttribute('stroke-dasharray', refs.len);
+    refs.fillP.setAttribute('stroke-dashoffset', refs.len*(1-frac));
+    refs.needle.setAttribute('transform', `rotate(${-135+270*frac} 120 120)`);
+    refs.numEl.textContent = Math.round(state.pct*p)+'%';
+    refs.capEl.textContent = state.metricLabel;
+  },
+  snippet(){ return `<!-- 270deg SVG arc path (-135deg to 135deg) as the track;\n     a <line class="needle"> rotated via transform="rotate(${(-135+270*state.pct/100).toFixed(1)} 120 120)" -->`; }
+},
+{
+  id:'orb', name:'Pulse Orb',
+  desc:'A breathing radial-gradient blob — size and glow track the value.',
+  build(stage){
+    const orb = el('div', {class:'orb glowEl'});
+    orb.style.cssText = 'position:absolute;width:200px;height:200px;border-radius:50%;';
+    const center = ringCenter();
+    stage.appendChild(orb); stage.appendChild(center);
+    return { orb, numEl:center.querySelector('.ringNum'), capEl:center.querySelector('.ringCap') };
+  },
+  update(refs, p, elapsed){
+    const baseScale = 0.35 + 0.55*(state.pct/100);
+    const breathe = 1 + 0.045*Math.sin(elapsed/650)*p;
+    refs.orb.style.transform = `scale(${(baseScale*p*breathe).toFixed(3)})`;
+    refs.orb.style.opacity = (0.3+0.7*p).toFixed(2);
+    refs.orb.style.background = `radial-gradient(circle at 38% 32%, #fff2 0%, ${state.accent} 55%, transparent 72%)`;
+    refs.numEl.textContent = Math.round(state.pct*p)+'%';
+    refs.capEl.textContent = state.metricLabel;
+  },
+  snippet(){ return `<!-- div.orb { border-radius:50%; background:radial-gradient(circle at 38% 32%, #fff2 0%, ${state.accent} 55%, transparent 72%); }\n     scale = (0.35 + 0.55 * value/100) * entranceProgress * breathe(sin) -->`; }
+},
+{
+  id:'dual', name:'Dual Ring',
+  desc:'Outer ring tracks value; an inner arc keeps scanning like a radar.',
+  build(stage){
+    const sw = state.strokeWidth, r = 96 - sw/2, c = 2*Math.PI*r, innerR = Math.max(20, r-sw-16);
+    const svg = svgEl('svg', {viewBox:'0 0 240 240', class:'ringSvg'});
+    const track = svgEl('circle', {cx:120, cy:120, r, 'stroke-width':sw, class:'track', fill:'none'});
+    const fillC = svgEl('circle', {cx:120, cy:120, r, 'stroke-width':sw, class:'fill glowEl', fill:'none', 'stroke-linecap':'round', transform:'rotate(-90 120 120)', 'stroke-dasharray':c, 'stroke-dashoffset':c});
+    const scanner = svgEl('path', {d:arcPath(120,120,innerR,0,55), stroke:state.accent, 'stroke-width':3, fill:'none', 'stroke-linecap':'round', opacity:0});
+    svg.appendChild(track); svg.appendChild(fillC); svg.appendChild(scanner);
+    const center = ringCenter();
+    stage.appendChild(svg); stage.appendChild(center);
+    return { fillC, scanner, c, numEl:center.querySelector('.ringNum'), capEl:center.querySelector('.ringCap') };
+  },
+  update(refs, p, elapsed){
+    refs.fillC.setAttribute('stroke-dashoffset', refs.c*(1-(state.pct/100)*p));
+    refs.scanner.setAttribute('transform', `rotate(${(elapsed/10)%360} 120 120)`);
+    refs.scanner.setAttribute('opacity', (0.6*p).toFixed(2));
+    refs.numEl.textContent = Math.round(state.pct*p)+'%';
+    refs.capEl.textContent = state.metricLabel;
+  },
+  snippet(){ return `<!-- outer circle = classic arc sweep; inner <path> is a short 55deg arc\n     continuously re-rotated every frame: rotate((elapsed/10)%360, 120, 120) -->`; }
+},
+{
+  id:'counter', name:'Counting Number',
+  desc:'A big serif number counts up, blurring into focus, over a slim bar.',
+  build(stage){
+    const wrap = el('div', {}, );
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;';
+    const num = el('div', {class:'counterNum'}, '0%');
+    const cap = el('div', {class:'ringCap'}, '—');
+    const bar = el('div', {class:'counterBar'}, el('div', {class:'counterFill'}));
+    wrap.appendChild(num); wrap.appendChild(cap); wrap.appendChild(bar);
+    stage.appendChild(wrap);
+    return { num, cap, fill:bar.querySelector('.counterFill') };
+  },
+  update(refs, p){
+    const val = state.pct*p;
+    const reveal = clamp(p/0.35, 0, 1);
+    refs.num.textContent = Math.round(val)+'%';
+    refs.num.style.opacity = reveal;
+    refs.num.style.filter = `blur(${(1-reveal)*10}px)`;
+    refs.num.style.transform = `translateY(${(1-reveal)*14}px)`;
+    refs.cap.textContent = state.metricLabel;
+    refs.fill.style.width = val+'%';
+    refs.fill.style.background = state.accent;
+  },
+  snippet(){ return `<!-- big number counts 0 -> ${state.pct} while blur(10px)->0 and translateY(14px)->0 over the first 35% of the animation -->`; }
+},
+{
+  id:'spectrum', name:'Radial Spectrum',
+  desc:'28 bars radiate outward like an equalizer, staggered by index.',
+  N:28,
+  build(stage){
+    const wrap = el('div', {class:'barWrap'});
+    const bars = [];
+    for(let i=0;i<this.N;i++){
+      const b = el('div', {class:'bar'});
+      const deg = (360/this.N)*i;
+      b.style.transform = `rotate(${deg}deg) translateY(-70px) scaleY(.25)`;
+      wrap.appendChild(b); bars.push({el:b, deg});
+    }
+    const center = ringCenter();
+    stage.appendChild(wrap); stage.appendChild(center);
+    return { bars, numEl:center.querySelector('.ringNum'), capEl:center.querySelector('.ringCap') };
+  },
+  update(refs, p){
+    const target = Math.round((state.pct/100)*this.N);
+    refs.bars.forEach((b,i)=>{
+      const lit = stagger(i, target, p);
+      const scale = 0.25 + 0.9*lit;
+      b.el.style.transform = `rotate(${b.deg}deg) translateY(-70px) scaleY(${scale})`;
+      b.el.style.background = lit>0.05 ? state.accent : 'rgba(255,255,255,.35)';
+      b.el.style.opacity = 0.4+0.6*lit;
+    });
+    refs.numEl.textContent = Math.round(state.pct*p)+'%';
+    refs.capEl.textContent = state.metricLabel;
+  },
+  snippet(){ return `<!-- ${this.N} div.bar elements at rotate(i*${(360/this.N).toFixed(1)}deg) translateY(-70px);\n     scaleY grows 0.25 -> 1.15 in an index-staggered chase up to the ${state.pct}% mark -->`; }
+},
+];
+
+/* ============================================================
+ * Mount / render loop
+ * ============================================================ */
+const mounted = {};
+const startTimes = {};
+
+function createCards(){
+  const grid = document.getElementById('grid');
+  CARD_DEFS.forEach((def, i)=>{
+    const article = el('article', {class:'card', 'data-card':def.id});
+    const top = el('div', {class:'cardTop'},
+      el('span', {class:'tag'}, String(i+1).padStart(2,'0')+' · '+def.name.toUpperCase()),
+      el('div', {class:'cardActions'},
+        el('button', {class:'iconBtn', title:'Replay', 'data-act':'replay'}, '⟳'),
+        el('button', {class:'iconBtn', title:'Copy snippet', 'data-act':'copy'}, '⧉')
+      )
+    );
+    const stage = el('div', {class:'stage'});
+    const desc = el('p', {class:'cardDesc'}, def.desc);
+    article.appendChild(top); article.appendChild(stage); article.appendChild(desc);
+    grid.appendChild(article);
+
+    top.querySelector('[data-act="replay"]').addEventListener('click', ()=>{ startTimes[def.id] = performance.now(); });
+    top.querySelector('[data-act="copy"]').addEventListener('click', (e)=>{
+      const btn = e.currentTarget;
+      const text = def.snippet(mounted[def.id]);
+      const done = ()=>{ btn.textContent='✓'; setTimeout(()=>btn.textContent='⧉', 1100); };
+      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(done);
+      else done();
+    });
+
+    mounted[def.id] = { stage, refs:null };
+  });
+}
+
+function rebuildAll(){
+  CARD_DEFS.forEach(def=>{
+    const m = mounted[def.id];
+    m.stage.innerHTML = '';
+    m.refs = def.build(m.stage);
+  });
+  replayAll();
+}
+function replayAll(){
+  const now = performance.now();
+  CARD_DEFS.forEach(def=>{ startTimes[def.id] = now; });
+}
+
+function frame(now){
+  const easing = EASING[state.easing];
+  CARD_DEFS.forEach(def=>{
+    const st = startTimes[def.id] ?? now;
+    const elapsedEntrance = now - st;
+    const raw = clamp(elapsedEntrance/easing.dur, 0, 1);
+    const p = easing.fn(raw);
+    if(state.autoLoop && raw>=1 && (now-st) > easing.dur+900) startTimes[def.id] = now;
+    def.update(mounted[def.id].refs, p, now);
+  });
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+ * Top bar wiring
+ * ============================================================ */
+function applyAccent(hex){
+  state.accent = hex;
+  document.documentElement.style.setProperty('--accent', hex);
+  document.querySelectorAll('.swatch').forEach(s=>{
+    s.classList.toggle('active', s.dataset.color.toLowerCase()===hex.toLowerCase());
+  });
+}
+function applyFont(key){
+  const f = FONTS[key];
+  document.documentElement.style.setProperty('--font-display', f.display);
+  document.documentElement.style.setProperty('--font-display-style', f.style);
+  document.documentElement.style.setProperty('--font-ui', f.ui);
+  document.documentElement.style.setProperty('--font-mono', f.mono);
+}
+function applyEasing(key){
+  const e = EASING[key];
+  document.documentElement.style.setProperty('--ease', e.css);
+  document.documentElement.style.setProperty('--dur', e.dur+'ms');
+}
+function refreshLiveBadge(){
+  const badge = document.getElementById('liveBadge');
+  const mv = metricValue(state.metric);
+  badge.textContent = mv.isLive ? 'live' : 'demo';
+  badge.classList.toggle('live', mv.isLive);
+  return mv;
+}
+function setMetric(key){
+  state.metric = key;
+  state.metricLabel = METRICS[key].label;
+  const mv = refreshLiveBadge();
+  state.pct = mv.pct;
+  document.getElementById('valueSlider').value = mv.pct;
+  document.getElementById('valueVal').textContent = mv.pct+'%';
+  replayAll();
+}
+
+function initControls(){
+  const swatchWrap = document.getElementById('swatches');
+  SWATCHES.forEach(hex=>{
+    const s = el('div', {class:'swatch', 'data-color':hex});
+    s.style.background = hex;
+    s.addEventListener('click', ()=>{ applyAccent(hex); document.getElementById('customColor').value = hex; });
+    swatchWrap.appendChild(s);
+  });
+  applyAccent(state.accent);
+
+  document.getElementById('customColor').addEventListener('input', (e)=> applyAccent(e.target.value));
+
+  const metricSelect = document.getElementById('metricSelect');
+  Object.keys(METRICS).forEach(key=>{
+    metricSelect.appendChild(el('option', {value:key}, METRICS[key].label));
+  });
+  metricSelect.value = state.metric;
+  metricSelect.addEventListener('change', (e)=> setMetric(e.target.value));
+
+  const valueSlider = document.getElementById('valueSlider');
+  const valueVal = document.getElementById('valueVal');
+  valueSlider.addEventListener('input', (e)=>{
+    state.pct = Number(e.target.value);
+    valueVal.textContent = state.pct+'%';
+  });
+
+  const strokeSlider = document.getElementById('strokeSlider');
+  const strokeVal = document.getElementById('strokeVal');
+  strokeSlider.addEventListener('input', (e)=>{
+    state.strokeWidth = Number(e.target.value);
+    strokeVal.textContent = state.strokeWidth+'px';
+  });
+  strokeSlider.addEventListener('change', rebuildAll);
+
+  document.getElementById('easeSelect').addEventListener('change', (e)=>{
+    state.easing = e.target.value;
+    applyEasing(state.easing);
+    replayAll();
+  });
+  applyEasing(state.easing);
+
+  document.getElementById('fontSelect').addEventListener('change', (e)=>{
+    state.font = e.target.value;
+    applyFont(state.font);
+  });
+  applyFont(state.font);
+
+  document.getElementById('glowToggle').addEventListener('change', (e)=>{
+    state.glow = e.target.checked;
+    document.body.classList.toggle('no-glow', !state.glow);
+  });
+
+  document.getElementById('loopToggle').addEventListener('change', (e)=>{ state.autoLoop = e.target.checked; });
+
+  document.getElementById('replayAllBtn').addEventListener('click', replayAll);
+
+  window.addEventListener('storage', (e)=>{ if(e.key===HEALTH_KEY) refreshLiveBadge(); });
+}
+
+/* ============================================================
+ * Boot
+ * ============================================================ */
+initControls();
+const initial = refreshLiveBadge();
+state.pct = initial.pct;
+document.getElementById('valueSlider').value = initial.pct;
+document.getElementById('valueVal').textContent = initial.pct+'%';
+createCards();
+rebuildAll();
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
