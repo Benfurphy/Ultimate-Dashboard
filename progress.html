@@ -259,23 +259,16 @@ function compress(dataUrl,maxDim,q){return new Promise(res=>{const img=new Image
 const CHART_WINDOW=30,AVG_WINDOW=7;
 
 /* ===================== Static demo data (workout-fed in hosted app) ===================== */
-const LIFTS=[
-  {id:'l1',exerciseName:'Barbell bench',kind:'pr_reps',currentReps:7,previousReps:5,currentWeightKg:85,previousWeightKg:85},
-  {id:'l2',exerciseName:'Barbell bench',kind:'pr_weight',currentWeightKg:85,previousWeightKg:80,currentReps:5,previousReps:5},
-  {id:'l3',exerciseName:'Back squat',kind:'pr_weight',currentWeightKg:120,previousWeightKg:115,currentReps:5,previousReps:5},
-  {id:'l4',exerciseName:'Deadlift',kind:'pr_reps',currentReps:6,previousReps:4,currentWeightKg:140,previousWeightKg:140},
-  {id:'l5',exerciseName:'Overhead press',kind:'regress_weight',currentWeightKg:50,previousWeightKg:55,currentReps:5,previousReps:5},
-];
-const COMPOSITION={phase:'recomp',weightSlopeKgPerWeek:0,volumeTrendPct:143,estimatedLeanKgPerWeek:null,estimatedFatKgPerWeek:null,windowDays:28,confidence:30};
+const LIFTS=[];
+const COMPOSITION={phase:'cutting',weightSlopeKgPerWeek:0,volumeTrendPct:143,estimatedLeanKgPerWeek:null,estimatedFatKgPerWeek:null,windowDays:28,confidence:30};
 const PHASE_LABEL={recomp:'Recomping',bulking:'Bulking',fat_gain:'Fat gain',cutting:'Cutting',losing:'Losing both',holding:'Holding',insufficient:'Calibrating'};
 const PHASE_SUB={recomp:'lifts up, weight steady, likely swapping fat for muscle',bulking:'weight up, lifts up. the gains are mostly muscle',fat_gain:'weight up, lifts flat. most of the gain is fat',cutting:'weight down, lifts preserved. fat loss with muscle held',losing:'weight down, lifts down. losing both',holding:'weight + lifts both steady. maintenance phase',insufficient:'log a few more weeks of weight + training to unlock this'};
 
 /* ===================== State ===================== */
 const LS='progress_standalone_v1',PHOTOS='progress_standalone_photos_v1';
 function seed(){
-  // 3 entries → "3 entries · last 3 days", axis 70.5–72.4, 71.2 today, ↓0.7 / 7d
   const e=[];const add=(off,kg)=>{const d=new Date();d.setDate(d.getDate()-off);e.push({dateKey:getLocalDateKey(d),weightKg:kg});};
-  add(7,71.9);add(3,71.0);add(0,71.2);
+  add(1,84.0);
   return {units:'kg',entries:e};
 }
 function load(){try{const r=localStorage.getItem(LS);if(!r)return seed();const p=JSON.parse(r);return {units:p.units||'kg',entries:Array.isArray(p.entries)?p.entries:seed().entries};}catch{return seed();}}
