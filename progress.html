@@ -267,9 +267,7 @@ const PHASE_SUB={recomp:'lifts up, weight steady, likely swapping fat for muscle
 /* ===================== State ===================== */
 const LS='progress_standalone_v1',PHOTOS='progress_standalone_photos_v1';
 function seed(){
-  const e=[];const add=(off,kg)=>{const d=new Date();d.setDate(d.getDate()-off);e.push({dateKey:getLocalDateKey(d),weightKg:kg});};
-  add(1,84.0);
-  return {units:'kg',entries:e};
+  return {units:'kg',entries:[]};
 }
 function load(){try{const r=localStorage.getItem(LS);if(!r)return seed();const p=JSON.parse(r);return {units:p.units||'kg',entries:Array.isArray(p.entries)?p.entries:seed().entries};}catch{return seed();}}
 function save(){try{localStorage.setItem(LS,JSON.stringify({units:state.units,entries:state.entries}));}catch{} if(window.PatronDB&&PatronDB.isCloud())PatronDB.set('patron-progress',{units:state.units,entries:state.entries});}
