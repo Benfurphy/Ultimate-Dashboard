@@ -269,7 +269,7 @@ const APPS = [
   { file: 'running.html',     name: 'Running',     tag: "This week's plan · log your runs",     icon: '👟', wide: true },
   { file: 'supplements.html', name: 'Supplements', tag: 'Your stack + smart recommendations',   icon: '💊' },
   { file: 'water.html',       name: 'Water',       tag: 'Daily hydration target',                icon: '💧' },
-  { file: 'creator.html',     name: 'Creator',     tag: 'Schedule · accounts · analytics',       icon: '🎬' },
+  { file: 'testing.html',     name: 'Testing & Monitoring', tag: 'VALD CMJ trend · full battery @ wk 1/4/8/12', icon: '🧪', wide: true },
   { file: 'goals.html',       name: 'Goals',       tag: 'Goals & streaks',                       icon: '🎯' },
   { file: 'progress.html',    name: 'Progress',    tag: 'Photos & measurements',                 icon: '📈' },
   { file: 'macros.html',      name: 'Macros',      tag: 'Protein · carbs · fat',                 icon: '🍳' },
@@ -471,6 +471,21 @@ function statFor(file){
         return { value: String(s.runs.length), label: 'runs logged' };
       }
     }
+    else if (file === 'testing.html') {
+      const s = lsGet('vald_testing_cache_v1');
+      if (s && Array.isArray(s.cmj) && s.cmj.length) {
+        const cmj = s.cmj;
+        const latest = cmj[cmj.length - 1];
+        const prior = cmj.slice(Math.max(0, cmj.length - 5), cmj.length - 1).filter(r => r.jumpHeightCm != null);
+        if (prior.length >= 2 && latest.jumpHeightCm != null) {
+          const avg = prior.reduce((a, r) => a + r.jumpHeightCm, 0) / prior.length;
+          const pct = ((latest.jumpHeightCm - avg) / avg) * 100;
+          if (pct <= -15) return { value: 'Back off', label: 'CMJ vs rolling avg' };
+          if (pct <= -10) return { value: 'Watch', label: 'CMJ vs rolling avg' };
+        }
+        return { value: latest.jumpHeightCm != null ? latest.jumpHeightCm.toFixed(1) + ' cm' : '—', label: 'latest CMJ' };
+      }
+    }
   } catch (e) {}
   return null;
 }
@@ -510,12 +525,47 @@ function fitnessGraphHtml(){
       + '<div class="fitLegend">' + legend + '</div>';
   } catch(e){ return ''; }
 }
+// Last 8 weekly CMJs: jump height + RSI-modified, normalized independently
+// (same "relative trend shape" approach as the fitness tile above).
+function testingGraphHtml(){
+  try {
+    const c = lsGet('vald_testing_cache_v1');
+    if (!c || !Array.isArray(c.cmj)) return '';
+    const recent = c.cmj.slice(-8);
+    const series = [
+      { key:'jumpHeightCm', color:'var(--brand)', label:'height', higherIsBetter:true },
+      { key:'rsiModified',  color:'var(--pos)',   label:'rsi-mod', higherIsBetter:true },
+    ].map(s => ({ ...s, vals: recent.map(r => r[s.key]).filter(v => v != null) }))
+     .filter(s => s.vals.length >= 2);
+    if (!series.length) return '';
+    const w = 160, h = 52, padX = 4, padY = 6;
+    const paths = series.map(s=>{
+      const vals = s.vals;
+      const min = Math.min.apply(null, vals), max = Math.max.apply(null, vals), range = (max-min) || 1;
+      const n = vals.length;
+      const pts = vals.map((v,i)=>{
+        let norm = (v-min)/range;
+        if (!s.higherIsBetter) norm = 1-norm;
+        const x = padX + (n>1 ? i*((w-padX*2)/(n-1)) : (w-padX*2)/2);
+        const y = h-padY - norm*(h-padY*2);
+        return [x,y];
+      });
+      const d = pts.map((p,i)=> (i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+      const last = pts[pts.length-1];
+      return '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>'
+        + '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.4" fill="' + s.color + '"/>';
+    }).join('');
+    const legend = series.map(s=>'<span class="fitLegendItem"><span class="fitLegendDot" style="background:' + s.color + '"></span>' + s.label + '</span>').join('');
+    return '<div class="fitGraph"><svg class="fitGraphSvg" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden>' + paths + '</svg></div>'
+      + '<div class="fitLegend">' + legend + '</div>';
+  } catch(e){ return ''; }
+}
 function cardHtml(a){
   const st = statFor(a.file);
   const tail = st
     ? '<div class="cardStat"><span class="cardStatValue">' + esc(st.value) + '</span><span class="cardStatLabel">' + esc(st.label) + '</span></div>'
     : '<p class="cardTag">' + esc(a.tag) + '</p>';
-  const graph = a.file === 'fitness.html' ? fitnessGraphHtml() : '';
+  const graph = a.file === 'fitness.html' ? fitnessGraphHtml() : a.file === 'testing.html' ? testingGraphHtml() : '';
   return '<a class="card' + (a.wide ? ' tileWide' : '') + '" href="' + a.file + '">'
     + '<span class="cardArrow" aria-hidden>↗</span>'
     + '<div class="cardTop"><span class="cardIcon" aria-hidden>' + a.icon + '</span><span class="cardName">' + esc(a.name) + '</span></div>'

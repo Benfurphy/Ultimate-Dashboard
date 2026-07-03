@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0C0C12" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Patron" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+
+<title>Testing &amp; Monitoring · Chasing Legendary Status</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("patron_theme")||"nocturne");}catch(e){document.documentElement.setAttribute("data-theme","nocturne");}</script>
+
+<link rel="stylesheet" href="theme.css" />
+
+<style>
+  .grid { display:grid; gap: var(--space-4); }
+  .section { display:flex; flex-direction:column; gap: var(--space-3); }
+  .sectionHead { display:flex; align-items:baseline; justify-content:space-between; gap: var(--space-3); flex-wrap:wrap; }
+  .sectionTitle { font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); letter-spacing: -0.02em; margin: 0; }
+  .sectionTag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+  /* Sync bar */
+  .syncBar { display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); flex-wrap:wrap; padding: var(--space-3) var(--space-4); }
+  .syncStatus { font-size: 12px; color: var(--muted); }
+  .syncStatus strong { color: var(--muted-strong); font-weight: 600; }
+  .configNote { font-size: 12px; line-height: 1.55; color: var(--muted-strong); }
+  .configNote code { font-family: var(--font-mono); font-size: 11px; background: var(--surface-2); padding: 2px 6px; border-radius: 4px; }
+
+  /* Flag badges */
+  .flagBadge { display:inline-flex; align-items:center; gap:4px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px; border-radius: var(--radius-pill); border: 1px solid transparent; white-space:nowrap; }
+  .flagOk { background: var(--pos-soft); border-color: var(--pos-line); color: var(--pos); }
+  .flagWatch { background: var(--warn-soft); border-color: var(--warn-line); color: var(--warn); }
+  .flagBad { background: var(--neg-soft); border-color: var(--neg-line); color: var(--neg); }
+  .flagMuted { background: var(--surface-2); border-color: var(--border); color: var(--muted); }
+
+  /* Hero banner */
+  .heroBanner { display:flex; align-items:flex-start; gap: var(--space-4); padding: var(--space-5); border-radius: var(--radius-lg); border: 1px solid var(--border); }
+  .heroBanner[data-tone="ok"] { background: var(--pos-soft); border-color: var(--pos-line); }
+  .heroBanner[data-tone="watch"] { background: var(--warn-soft); border-color: var(--warn-line); }
+  .heroBanner[data-tone="back-off"] { background: var(--neg-soft); border-color: var(--neg-line); }
+  .heroIcon { font-size: 28px; line-height:1; flex-shrink:0; }
+  .heroBannerTitle { font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); margin: 0 0 4px; }
+  .heroBannerBody { font-size: 13px; line-height: 1.55; color: var(--muted-strong); margin: 0; }
+  .heroStats { display:flex; gap: var(--space-6); margin-top: var(--space-4); flex-wrap:wrap; }
+  .heroStat { display:flex; flex-direction:column; gap: 2px; }
+  .heroStatValue { font-family: var(--font-display); font-weight: 600; font-size: var(--text-2xl); font-variant-numeric: tabular-nums; }
+  .heroStatDelta { font-family: var(--font-mono); font-size: 11px; }
+  .heroStatDelta.down { color: var(--neg); }
+  .heroStatDelta.up { color: var(--pos); }
+  .heroStatLabel { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+  /* Charts */
+  .chartWrap { position: relative; }
+  .chart { display:block; width:100%; height: 110px; }
+  .chartAvg { fill:none; stroke: rgba(255,255,255,.35); stroke-width: 1.2; stroke-dasharray: 4 4; stroke-linecap: round; }
+  .chartLine { fill:none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .dot { fill: var(--brand); opacity: .5; }
+  .dotWatch { fill: var(--warn); }
+  .dotBad { fill: var(--neg); filter: drop-shadow(0 0 5px var(--neg)); }
+  .chartMeta { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+  .chartsRow { display:grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+  @media (max-width: 640px) { .chartsRow { grid-template-columns: 1fr; } }
+
+  /* Weekly log table */
+  .logTable { width:100%; border-collapse: collapse; font-size: 13px; }
+  .logTable th { text-align:left; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  .logTable td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .logTable tr:last-child td { border-bottom: none; }
+  .logDelta { font-family: var(--font-mono); font-size: 11px; }
+  .logDelta.down { color: var(--neg); }
+  .logDelta.up { color: var(--pos); }
+  .logDelta.flat { color: var(--muted); }
+
+  /* Full battery */
+  .progRow { display:flex; align-items:center; gap: var(--space-3); flex-wrap:wrap; }
+  .battGrid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); }
+  .battCard { padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); display:flex; flex-direction:column; gap: var(--space-2); }
+  .battWeekRow { display:flex; align-items:baseline; justify-content:space-between; }
+  .battWeek { font-family: var(--font-display); font-weight: 600; font-size: var(--text-sm); }
+  .battDate { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+  .battGroup { display:flex; flex-direction:column; gap: 2px; padding-top: var(--space-2); border-top: 1px solid var(--border); }
+  .battGroup:first-of-type { border-top: none; padding-top: 0; }
+  .battGroupLabel { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand-2); }
+  .battRow { display:flex; justify-content:space-between; gap: var(--space-2); font-size: 12px; color: var(--muted-strong); }
+  .battEmpty { font-size: 12px; color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<main class="page grain-overlay">
+  <div class="shell">
+    <header class="header">
+      <div>
+        <h1 class="title">Testing &amp; Monitoring</h1>
+        <p class="subtitle">VALD ForceDecks · weekly CMJ autoregulation + full battery @ wk 1/4/8/12</p>
+      </div>
+      <div class="headerControls">
+        <a class="backLink" href="index.html">← Dashboard</a>
+        <span id="themeSeg"></span>
+      </div>
+    </header>
+
+    <div id="root" class="grid"></div>
+  </div>
+</main>
+
+<script src="theme.js"></script>
+<script>
+document.getElementById('themeSeg').innerHTML = Patron.switcherHtml();
+
+/* ============================================================
+ * Testing & Monitoring — pulls ForceDecks (CMJ / Drop Jump / IMTP)
+ * history from VALD Hub via /api/vald/data, caches it locally, and
+ * surfaces two things:
+ *  1. A weekly CMJ trend with a rolling-average fatigue flag — if
+ *     jump height or RSI-modified drops >10-15% below the trailing
+ *     average, that's an early autoregulation signal.
+ *  2. A full-battery checkpoint view (CMJ + IMTP + Drop Jump,
+ *     including L/R asymmetry) anchored to weeks 1/4/8/12 of a
+ *     training block.
+ * ============================================================ */
+const CACHE_KEY = 'vald_testing_cache_v1';
+const ROLL_WINDOW = 4;       // trailing sessions used for the rolling average
+const WATCH_PCT = 10;        // % below rolling avg -> "watch"
+const BACKOFF_PCT = 15;      // % below rolling avg -> "back off"
+const CHECKPOINT_WEEKS = [1, 4, 8, 12];
+const CHECKPOINT_WINDOW_DAYS = 6;
+const FLAG_RANK = { ok: 0, watch: 1, 'back-off': 2 };
+
+function loadCache(){
+  try { const r = localStorage.getItem(CACHE_KEY); if (r) return Object.assign({ cmj:[], dj:[], imtp:[], updatedAt:null, programStart:null }, JSON.parse(r)); }
+  catch(e){}
+  return { cmj:[], dj:[], imtp:[], updatedAt:null, programStart:null };
+}
+function saveCache(){ try { localStorage.setItem(CACHE_KEY, JSON.stringify(state)); } catch(e){} }
+
+let state = loadCache();
+let ui = { syncing:false, notConfigured:false, error:null };
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtCm(v){ return v==null ? '—' : v.toFixed(1)+' cm'; }
+function fmtRsi(v){ return v==null ? '—' : v.toFixed(2); }
+function fmtS(v){ return v==null ? '—' : v.toFixed(3)+' s'; }
+function fmtN(v){ return v==null ? '—' : Math.round(v)+' N'; }
+function fmtAsym(v){ return v==null ? '—' : (v>0?'+':'')+v.toFixed(1)+'%'; }
+function fmtPct(v){ return v==null ? '—' : (v>0?'+':'')+v.toFixed(1)+'%'; }
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDateShort(d){ d = (d instanceof Date) ? d : new Date(d); return MONTHS[d.getMonth()]+' '+d.getDate(); }
+function fmtDate(d){ d = (d instanceof Date) ? d : new Date(d); return MONTHS[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear(); }
+function agoStr(iso){
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (days <= 0) return 'today'; if (days === 1) return 'yesterday';
+  if (days < 14) return days + 'd ago'; return Math.floor(days/7) + 'w ago';
+}
+function smoothPath(pts){
+  if(!pts.length) return ''; if(pts.length===1) return 'M '+pts[0].x+' '+pts[0].y;
+  let d='M '+pts[0].x.toFixed(2)+' '+pts[0].y.toFixed(2);
+  for(let i=1;i<pts.length;i++){ const pr=pts[i-1],cu=pts[i],cx=(pr.x+cu.x)/2; d+=' Q '+cx.toFixed(2)+' '+pr.y.toFixed(2)+', '+cx.toFixed(2)+' '+((pr.y+cu.y)/2).toFixed(2); d+=' T '+cu.x.toFixed(2)+' '+cu.y.toFixed(2); }
+  return d;
+}
+function worseFlag(a,b){
+  const ra = (a in FLAG_RANK) ? FLAG_RANK[a] : -1, rb = (b in FLAG_RANK) ? FLAG_RANK[b] : -1;
+  return rb > ra ? b : a;
+}
+
+/* ---- Rolling average + flag, applied to a chronological list of {date, [key]} ---- */
+function withRolling(list, key){
+  return list.map((s,i)=>{
+    const prior = list.slice(Math.max(0, i-ROLL_WINDOW), i).filter(p => p[key] != null);
+    if (prior.length < 2 || s[key] == null) return { avg:null, pct:null, flag:null };
+    const avg = prior.reduce((a,p)=>a+p[key],0) / prior.length;
+    const pct = avg ? ((s[key]-avg)/avg)*100 : null;
+    let flag = 'ok';
+    if (pct != null) { if (pct <= -BACKOFF_PCT) flag = 'back-off'; else if (pct <= -WATCH_PCT) flag = 'watch'; }
+    return { avg, pct, flag };
+  });
+}
+function buildCmjRows(){
+  const list = state.cmj;
+  const h = withRolling(list, 'jumpHeightCm');
+  const r = withRolling(list, 'rsiModified');
+  return list.map((row,i)=> Object.assign({}, row, {
+    heightAvg: h[i].avg, heightPct: h[i].pct, heightFlag: h[i].flag,
+    rsiAvg: r[i].avg, rsiPct: r[i].pct, rsiFlag: r[i].flag,
+    flag: worseFlag(h[i].flag, r[i].flag),
+  }));
+}
+function flagBadge(flag, label){
+  const cls = flag === 'back-off' ? 'flagBad' : flag === 'watch' ? 'flagWatch' : flag === 'ok' ? 'flagOk' : 'flagMuted';
+  const text = label || (flag === 'back-off' ? '⚠ back off' : flag === 'watch' ? 'watch' : flag === 'ok' ? 'on track' : 'baseline');
+  return '<span class="flagBadge '+cls+'">'+esc(text)+'</span>';
+}
+
+/* ---- Sync from VALD ---- */
+async function sync(){
+  ui.syncing = true; ui.error = null; render();
+  try {
+    const r = await fetch('/api/vald/data');
+    const j = await r.json();
+    if (j.configured === false) { ui.notConfigured = true; }
+    else if (j.error) { ui.error = j.error; }
+    else {
+      ui.notConfigured = false;
+      state.cmj = j.cmj; state.dj = j.dj; state.imtp = j.imtp; state.updatedAt = j.updatedAt;
+      saveCache();
+    }
+  } catch(e) { ui.error = 'Sync failed — check your connection.'; }
+  ui.syncing = false; render();
+}
+
+/* ---- Hero: this week's CMJ status ---- */
+function heroHtml(rows){
+  if (!rows.length) return '';
+  const latest = rows[rows.length-1];
+  const hasBaseline = latest.heightFlag != null;
+  let tone = 'ok', icon = '✅', title = 'On track', body;
+  if (!hasBaseline) {
+    tone = 'ok'; icon = '📈'; title = 'Building your baseline';
+    body = 'Log a few more weekly CMJs — the rolling average needs at least 2 prior sessions before it can flag a drop.';
+  } else if (latest.flag === 'back-off') {
+    tone = 'back-off'; icon = '⚠️'; title = 'Back off this week';
+    const worseKey = FLAG_RANK[latest.heightFlag] >= FLAG_RANK[latest.rsiFlag] ? 'jump height' : 'RSI-modified';
+    body = (worseKey === 'jump height' ? 'Jump height' : 'RSI-modified') + ' is down ' + fmtPct(worseKey === 'jump height' ? latest.heightPct : latest.rsiPct).replace('+','') + ' vs your rolling average. That size of drop is a real early-warning signal for accumulated fatigue that a deficit plus 6 days of training can hide until it becomes an injury or a stalled lift — trim volume/intensity in today\'s lower session rather than following the plan blind.';
+  } else if (latest.flag === 'watch') {
+    tone = 'watch'; icon = '👀'; title = 'Keep an eye on it';
+    body = 'One or both of jump height / RSI-modified are down 10-15% vs your rolling average. Not yet a red flag, but worth noting — if it repeats next week, back off.';
+  } else {
+    tone = 'ok'; icon = '✅'; title = 'On track';
+    body = 'Jump height and RSI-modified are both within a normal band of your rolling average. Good signal to train as planned.';
+  }
+  const heightDeltaCls = latest.heightPct == null ? '' : latest.heightPct < 0 ? 'down' : 'up';
+  const rsiDeltaCls = latest.rsiPct == null ? '' : latest.rsiPct < 0 ? 'down' : 'up';
+  return '<div class="heroBanner" data-tone="'+tone+'">'
+    + '<span class="heroIcon" aria-hidden>'+icon+'</span>'
+    + '<div style="flex:1;min-width:0">'
+    + '<p class="heroBannerTitle">'+esc(title)+'</p>'
+    + '<p class="heroBannerBody">'+body+'</p>'
+    + '<div class="heroStats">'
+    + '<div class="heroStat"><span class="heroStatValue">'+fmtCm(latest.jumpHeightCm)+'</span>'
+      + (latest.heightPct!=null ? '<span class="heroStatDelta '+heightDeltaCls+'">'+fmtPct(latest.heightPct)+' vs avg</span>' : '')
+      + '<span class="heroStatLabel">jump height · '+esc(agoStr(latest.date))+'</span></div>'
+    + '<div class="heroStat"><span class="heroStatValue">'+fmtRsi(latest.rsiModified)+'</span>'
+      + (latest.rsiPct!=null ? '<span class="heroStatDelta '+rsiDeltaCls+'">'+fmtPct(latest.rsiPct)+' vs avg</span>' : '')
+      + '<span class="heroStatLabel">RSI-modified</span></div>'
+    + '</div></div></div>';
+}
+
+/* ---- Weekly CMJ trend chart (jump height or RSI-modified) ---- */
+function metricChartSvg(rows, key, avgKey, flagKey, color){
+  const pts = rows.filter(r => r[key] != null);
+  if (pts.length < 2) return '<p class="cardTag">Not enough sessions yet to chart a trend.</p>';
+  const W = 320, H = 100, padX = 6, padY = 14;
+  const vals = pts.map(r => r[key]);
+  const min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+  const pad = (max - min) * 0.2 || 1, yMin = min - pad, yMax = max + pad;
+  const xFor = i => pts.length === 1 ? W/2 : padX + (i/(pts.length-1)) * (W - padX*2);
+  const yFor = v => H - padY - ((v - yMin) / (yMax - yMin)) * (H - padY*2);
+  const linePts = pts.map((r,i) => ({ x: xFor(i), y: yFor(r[key]) }));
+  const avgPts = pts.map((r,i) => r[avgKey] != null ? { x: xFor(i), y: yFor(r[avgKey]) } : null).filter(Boolean);
+  const dots = pts.map((r,i) => {
+    const p = linePts[i];
+    const cls = r[flagKey] === 'back-off' ? 'dotBad' : r[flagKey] === 'watch' ? 'dotWatch' : 'dot';
+    const last = i === pts.length - 1;
+    return '<circle class="'+cls+'" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+(last?5:3)+'"'+(cls==='dot'?' style="fill:'+color+'"':'')+'/>';
+  }).join('');
+  const avgPath = avgPts.length > 1 ? '<path class="chartAvg" d="'+smoothPath(avgPts)+'"/>' : '';
+  return '<div class="chartWrap"><svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'
+    + avgPath
+    + '<path class="chartLine" style="stroke:'+color+'" d="'+smoothPath(linePts)+'"/>'
+    + dots + '</svg></div>';
+}
+
+function trendSectionHtml(rows){
+  if (!rows.length) {
+    return '<section class="card section"><div class="sectionHead"><h2 class="sectionTitle">Weekly CMJ</h2></div>'
+      + '<p class="cardTag">No CMJ sessions yet. Hit Sync above once your VALD credentials are set, or do a Monday CMJ to start the log.</p></section>';
+  }
+  const recent = rows.slice(-12);
+  const charts = '<div class="chartsRow">'
+    + '<div><div class="chartMeta">Jump height (cm)</div>' + metricChartSvg(recent, 'jumpHeightCm', 'heightAvg', 'heightFlag', 'var(--brand)') + '</div>'
+    + '<div><div class="chartMeta">RSI-modified</div>' + metricChartSvg(recent, 'rsiModified', 'rsiAvg', 'rsiFlag', 'var(--pos)') + '</div>'
+    + '</div>';
+  const logRows = rows.slice().reverse().slice(0, 16).map(r => {
+    const hCls = r.heightPct == null ? 'flat' : r.heightPct < 0 ? 'down' : 'up';
+    const rCls = r.rsiPct == null ? 'flat' : r.rsiPct < 0 ? 'down' : 'up';
+    return '<tr><td>'+esc(fmtDateShort(r.date))+'</td>'
+      + '<td>'+fmtCm(r.jumpHeightCm)+' <span class="logDelta '+hCls+'">'+(r.heightPct!=null?fmtPct(r.heightPct):'')+'</span></td>'
+      + '<td>'+fmtRsi(r.rsiModified)+' <span class="logDelta '+rCls+'">'+(r.rsiPct!=null?fmtPct(r.rsiPct):'')+'</span></td>'
+      + '<td>'+flagBadge(r.flag)+'</td></tr>';
+  }).join('');
+  return '<section class="card section">'
+    + '<div class="sectionHead"><h2 class="sectionTitle">Weekly CMJ</h2><span class="sectionTag">Monday, before lower session</span></div>'
+    + charts
+    + '<table class="logTable"><thead><tr><th>Date</th><th>Jump height</th><th>RSI-mod</th><th>Status</th></tr></thead><tbody>'+logRows+'</tbody></table>'
+    + '</section>';
+}
+
+/* ---- Full battery checkpoints (weeks 1/4/8/12) ---- */
+function parseYMD(s){ const p = s.split('-').map(Number); return new Date(p[0], (p[1]||1)-1, p[2]||1); }
+function addDays(d,n){ const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+function nearestTest(list, target, windowDays){
+  let best = null, bestDiff = Infinity;
+  for (const t of list) {
+    const diff = Math.abs(new Date(t.date) - target);
+    if (diff < bestDiff && diff <= windowDays * 86400000) { best = t; bestDiff = diff; }
+  }
+  return best;
+}
+function battCardHtml(week, target, cmj, imtp, dj){
+  let groups = '';
+  groups += cmj
+    ? '<div class="battGroup"><div class="battGroupLabel">CMJ</div>'
+      + '<div class="battRow"><span>Jump height</span><span>'+fmtCm(cmj.jumpHeightCm)+'</span></div>'
+      + '<div class="battRow"><span>RSI-modified</span><span>'+fmtRsi(cmj.rsiModified)+'</span></div>'
+      + '<div class="battRow"><span>L/R asym (LSI)</span><span>'+fmtAsym(cmj.concentricImpulseAsymPct)+'</span></div></div>'
+    : '<div class="battGroup"><div class="battGroupLabel">CMJ</div><p class="battEmpty">not tested</p></div>';
+  groups += imtp
+    ? '<div class="battGroup"><div class="battGroupLabel">IMTP</div>'
+      + '<div class="battRow"><span>Peak vertical force</span><span>'+fmtN(imtp.peakVerticalForceN)+'</span></div>'
+      + '<div class="battRow"><span>L/R asym (LSI)</span><span>'+fmtAsym(imtp.peakForceAsymPct)+'</span></div></div>'
+    : '<div class="battGroup"><div class="battGroupLabel">IMTP</div><p class="battEmpty">not tested</p></div>';
+  groups += dj
+    ? '<div class="battGroup"><div class="battGroupLabel">Drop Jump</div>'
+      + '<div class="battRow"><span>RSI</span><span>'+fmtRsi(dj.rsi)+'</span></div>'
+      + '<div class="battRow"><span>Contact time</span><span>'+fmtS(dj.contactTimeS)+'</span></div></div>'
+    : '<div class="battGroup"><div class="battGroupLabel">Drop Jump</div><p class="battEmpty">not tested</p></div>';
+  return '<div class="battCard"><div class="battWeekRow"><span class="battWeek">Week '+week+'</span><span class="battDate">'+esc(fmtDateShort(target))+'</span></div>'+groups+'</div>';
+}
+function battSectionHtml(){
+  const progInput = '<div class="progRow"><span class="fieldLabel">Program start</span>'
+    + '<input type="date" class="fieldInput" style="width:auto" id="progStartInput" value="'+esc(state.programStart||'')+'"></div>';
+  if (!state.programStart) {
+    return '<section class="card section">'
+      + '<div class="sectionHead"><h2 class="sectionTitle">Full battery — weeks 1 / 4 / 8 / 12</h2></div>'
+      + progInput
+      + '<p class="cardTag">Set your training block\'s start date to line up checkpoints against your CMJ, IMTP and Drop Jump sessions.</p>'
+      + '</section>';
+  }
+  const start = parseYMD(state.programStart);
+  const cards = CHECKPOINT_WEEKS.map(week => {
+    const target = addDays(start, (week-1)*7);
+    const cmj = nearestTest(state.cmj, target, CHECKPOINT_WINDOW_DAYS);
+    const imtp = nearestTest(state.imtp, target, CHECKPOINT_WINDOW_DAYS);
+    const dj = nearestTest(state.dj, target, CHECKPOINT_WINDOW_DAYS);
+    return battCardHtml(week, target, cmj, imtp, dj);
+  }).join('');
+  return '<section class="card section">'
+    + '<div class="sectionHead"><h2 class="sectionTitle">Full battery — weeks 1 / 4 / 8 / 12</h2><span class="sectionTag">CMJ · IMTP · Drop Jump</span></div>'
+    + progInput
+    + '<div class="battGrid">'+cards+'</div>'
+    + '</section>';
+}
+
+/* ---- Sync bar ---- */
+function syncBarHtml(){
+  if (ui.notConfigured) {
+    return '<section class="card"><div class="syncBar"><p class="configNote">VALD isn\'t connected yet. Set <code>VALD_CLIENT_ID</code>, <code>VALD_CLIENT_SECRET</code>, <code>VALD_TENANT_ID</code> and <code>VALD_PROFILE_ID</code> in your environment (see <code>.env</code> locally, or Vercel → Project → Environment Variables in production), then reload.</p></div></section>';
+  }
+  const status = state.updatedAt
+    ? '<span class="syncStatus">Last synced <strong>'+esc(agoStr(state.updatedAt))+'</strong> · '+state.cmj.length+' CMJ · '+state.imtp.length+' IMTP · '+state.dj.length+' Drop Jump</span>'
+    : '<span class="syncStatus">Not synced yet.</span>';
+  return '<section class="card"><div class="syncBar">'
+    + status
+    + (ui.error ? '<span class="syncStatus" style="color:var(--neg)">'+esc(ui.error)+'</span>' : '')
+    + '<button type="button" class="btn btn-primary" data-act="sync" '+(ui.syncing?'disabled':'')+'>'+(ui.syncing?'Syncing…':'Sync from VALD')+'</button>'
+    + '</div></section>';
+}
+
+function render(){
+  const rows = buildCmjRows();
+  const root = document.getElementById('root');
+  root.innerHTML = syncBarHtml()
+    + (rows.length ? heroHtml(rows) : '')
+    + trendSectionHtml(rows)
+    + battSectionHtml();
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  if (b.dataset.act === 'sync') sync();
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'progStartInput') { state.programStart = e.target.value || null; saveCache(); render(); }
+});
+
+render();
+// Auto-sync on load if we've never synced, or it's been more than 6 hours.
+const STALE_MS = 6 * 60 * 60 * 1000;
+if (!state.updatedAt || (Date.now() - new Date(state.updatedAt).getTime()) > STALE_MS) sync();
+</script>
+</body>
+</html>
