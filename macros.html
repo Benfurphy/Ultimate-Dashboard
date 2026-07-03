@@ -45,6 +45,18 @@
   .barFill { height:100%; border-radius: var(--radius-pill); background: var(--brand); transition: width var(--duration) var(--ease-premium); }
   .barFill.over { background: var(--neg); }
 
+  .macroGoal { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+  .microBar { height: 4px; border-radius: var(--radius-pill); background: var(--track); overflow: hidden; margin-top: 8px; }
+  .microBarFill { height: 100%; border-radius: var(--radius-pill); background: currentColor; }
+  .macroBox[data-accent="p"] .microBarFill { color: #F472B6; }
+  .macroBox[data-accent="c"] .microBarFill { color: #FBBF24; }
+  .macroBox[data-accent="f"] .microBarFill { color: #60A5FA; }
+  .macroBox[data-accent="cal"] .microBarFill { color: var(--brand); }
+  .goalsForm { display:grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+  @media (max-width: 560px) { .goalsForm { grid-template-columns: repeat(2, 1fr); } }
+  .goalField { display:flex; flex-direction:column; gap:4px; }
+  .goalField label { font-family: var(--font-mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color: var(--muted); }
+
   .search { position: relative; margin: var(--space-5) 0 var(--space-3); }
   .results { display:flex; flex-direction:column; gap:6px; margin-top: var(--space-3); }
   .foodRow { display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); padding: 10px 12px; border:1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
@@ -107,8 +119,15 @@ function saveAll(o){ try { localStorage.setItem(STORE_KEY, JSON.stringify(o)); }
 let store = loadAll();
 function todaysLog(){ return store[todayKey()] || []; }
 function setTodaysLog(list){ store[todayKey()] = list; saveAll(store); }
-function goalCal(){ return store.goalCal != null ? store.goalCal : 2000; } // daily calorie target (editable)
+function goalCal(){ return store.goalCal != null ? store.goalCal : 2500; } // daily calorie target (editable)
+function goalP(){ return store.goalP != null ? store.goalP : 191; } // protein target (g)
+function goalC(){ return store.goalC != null ? store.goalC : 265; } // carb target (g)
+function goalF(){ return store.goalF != null ? store.goalF : 75; }  // fat target (g)
 function setGoalCal(n){ store.goalCal = n; saveAll(store); }
+function setGoalP(n){ store.goalP = n; saveAll(store); }
+function setGoalC(n){ store.goalC = n; saveAll(store); }
+function setGoalF(n){ store.goalF = n; saveAll(store); }
+let editGoals = false;
 
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function round(n){ return Math.round(n); }
@@ -124,9 +143,12 @@ function totals(){
 }
 
 /* ---- views ---- */
+function goalFieldHtml(id, label, val){
+  return '<div class="goalField"><label for="' + id + '">' + label + '</label><input class="fieldInput" id="' + id + '" type="number" min="0" step="1" value="' + val + '"></div>';
+}
 function summaryHtml(){
   const t = totals();
-  const goal = goalCal();
+  const goal = goalCal(), gp = goalP(), gc = goalC(), gf = goalF();
   const remaining = goal - t.cal;
   const over = remaining < 0;
   const pct = Math.min(100, goal > 0 ? (t.cal / goal) * 100 : 0);
@@ -141,20 +163,32 @@ function summaryHtml(){
     + '<span class="calOp">=</span>'
     + cell('remain' + (over ? ' over' : ''), Math.abs(remaining), over ? 'over' : 'remaining')
     + '</div>'
-    + '<div class="goalEdit"><span class="calCell"><span class="l">daily goal</span></span>'
-    + '<input class="fieldInput" id="goal" type="number" min="0" step="50" value="' + goal + '" /></div>'
+    + '<button type="button" class="btn btn-ghost" id="editGoalsBtn">' + (editGoals ? 'Done' : 'Edit targets') + '</button>'
     + '</div>';
   const bar = '<div class="bar"><div class="barFill' + (over ? ' over' : '') + '" style="width:' + pct + '%"></div></div>';
 
-  const box = (accent, val, unit, label) =>
-    '<div class="macroBox" data-accent="' + accent + '"><span class="macroVal">' + round(val) + (unit||'') + '</span><span class="macroLabel">' + label + '</span></div>';
+  const goalsForm = !editGoals ? '' : '<div class="goalsForm">'
+    + goalFieldHtml('goal-cal', 'Calories', goal)
+    + goalFieldHtml('goal-p', 'Protein (g)', gp)
+    + goalFieldHtml('goal-c', 'Carbs (g)', gc)
+    + goalFieldHtml('goal-f', 'Fat (g)', gf)
+    + '</div>';
+
+  const box = (accent, val, goalVal, unit, label) => {
+    const p = Math.min(100, goalVal > 0 ? (val / goalVal) * 100 : 0);
+    return '<div class="macroBox" data-accent="' + accent + '">'
+      + '<span class="macroVal">' + round(val) + (unit||'') + '<span class="macroGoal">/' + round(goalVal) + (unit||'') + '</span></span>'
+      + '<span class="macroLabel">' + label + '</span>'
+      + '<div class="microBar"><div class="microBarFill" style="width:' + p + '%"></div></div>'
+      + '</div>';
+  };
   return '<section class="card"><span class="cardName">Today</span>'
-    + head + bar
+    + head + bar + goalsForm
     + '<div class="macroGrid" style="margin-top:var(--space-4)">'
-    + box('p', t.p, 'g', 'protein')
-    + box('c', t.c, 'g', 'carbs')
-    + box('f', t.f, 'g', 'fat')
-    + box('cal', t.cal, '', 'calories')
+    + box('p', t.p, gp, 'g', 'protein')
+    + box('c', t.c, gc, 'g', 'carbs')
+    + box('f', t.f, gf, 'g', 'fat')
+    + box('cal', t.cal, goal, '', 'calories')
     + '</div></section>';
 }
 
@@ -205,15 +239,24 @@ document.addEventListener('input', e => {
     // re-render only the results list so the search box keeps focus + caret
     document.getElementById('results').innerHTML = resultsInner();
   }
-  if (e.target.id === 'goal') {
+  const GOAL_FIELDS = { 'goal-cal': setGoalCal, 'goal-p': setGoalP, 'goal-c': setGoalC, 'goal-f': setGoalF };
+  if (GOAL_FIELDS[e.target.id]) {
     const n = Number(e.target.value);
-    setGoalCal(isFinite(n) && n >= 0 ? n : 0);
-    render(); // refresh the Remaining number + bar live
-    document.getElementById('goal').focus(); // keep the cursor in the goal box
+    GOAL_FIELDS[e.target.id](isFinite(n) && n >= 0 ? n : 0);
+    const sel = e.target.selectionStart;
+    render(); // refresh the math + bars live
+    const el = document.getElementById(e.target.id);
+    el.focus();
+    try { el.setSelectionRange(sel, sel); } catch (err) {}
   }
 });
 
 document.addEventListener('click', e => {
+  if (e.target.id === 'editGoalsBtn') {
+    editGoals = !editGoals;
+    render();
+    return;
+  }
   const add = e.target.closest('[data-add]');
   if (add) {
     const f = matches[Number(add.getAttribute('data-add'))];

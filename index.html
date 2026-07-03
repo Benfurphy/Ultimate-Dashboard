@@ -266,6 +266,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-ui), -ap
 const APPS = [
   { file: 'fitness.html',     name: 'Fitness',     tag: 'Run load · pace @ HR · VO2max',        icon: '🏃', wide: true },
   { file: 'gym.html',         name: 'Gym',         tag: 'Progressive overload coach',           icon: '🏋️', wide: true },
+  { file: 'running.html',     name: 'Running',     tag: "This week's plan · log your runs",     icon: '👟', wide: true },
   { file: 'supplements.html', name: 'Supplements', tag: 'Your stack + smart recommendations',   icon: '💊' },
   { file: 'water.html',       name: 'Water',       tag: 'Daily hydration target',                icon: '💧' },
   { file: 'creator.html',     name: 'Creator',     tag: 'Schedule · accounts · analytics',       icon: '🎬' },
@@ -453,6 +454,23 @@ function statFor(file){
     else if (file === 'water.html') { const s = lsGet('water_standalone_v1'); if (s && s.logs) { const n = s.logs[localDateKey()] || 0; return { value: String(n), label: (n === 1 ? 'drink' : 'drinks') + ' today' }; } }
     else if (file === 'caffeine.html') { const s = lsGet('caffeine_standalone_v1'); if (s && Array.isArray(s.logs) && s.logs.length) { const key = activeDateKey(); const n = s.logs.filter(l => { const d = new Date(l.ts); if (d.getHours() < 6) d.setDate(d.getDate() - 1); return localDateKey(d) === key; }).reduce((a, l) => a + l.mg, 0); return { value: n + ' mg', label: 'caffeine today' }; } }
     else if (file === 'journal.html') { const s = lsGet('journal_standalone_v1'); if (s && s.entries && Object.keys(s.entries).length) { const DAY = 86400000; let streak = 0, n = 0; while (true) { const d = new Date(Date.now() - n * DAY); if (d.getHours() < 6) d.setDate(d.getDate() - 1); const key = localDateKey(d); if (n === 0 && !s.entries[key]) { n++; continue; } if (!s.entries[key]) break; streak++; n++; } return { value: streak + ' day' + (streak === 1 ? '' : 's'), label: 'streak' }; } }
+    else if (file === 'running.html') {
+      const s = lsGet('running_standalone_v1');
+      if (s && Array.isArray(s.runs) && s.runs.length) {
+        const progWeek = (dateKey) => {
+          const start = new Date('2026-07-06T00:00:00');
+          const d = new Date(dateKey + 'T00:00:00');
+          const days = Math.floor((d - start) / 86400000);
+          return days >= 0 ? Math.floor(days / 7) + 1 : 0;
+        };
+        const thisWeek = progWeek(localDateKey());
+        if (thisWeek >= 1 && thisWeek <= 12) {
+          const n = s.runs.filter(r => progWeek(r.dateKey) === thisWeek).length;
+          return { value: Math.min(n, 2) + '/2', label: 'runs this week' };
+        }
+        return { value: String(s.runs.length), label: 'runs logged' };
+      }
+    }
   } catch (e) {}
   return null;
 }
