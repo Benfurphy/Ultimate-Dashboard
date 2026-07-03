@@ -346,8 +346,8 @@ const A={
     if(!a.handle||!a.handle.trim()){alert('Add a handle first (tap Edit), then refresh.');return;}
     if(!ON_SERVER){alert('Live auto-refresh runs on the deployed app (Vercel) — locally just tap Edit and type the number. Growth + sparklines build as you update.');return;}
     let ep;
-    if(a.platform==='tiktok')ep='/api/tiktok?handle='+encodeURIComponent(a.handle);
-    else if(a.platform==='youtube'||a.platform==='youtube_long')ep='/api/youtube?handle='+encodeURIComponent(a.handle);
+    if(a.platform==='tiktok')ep='/api/social?platform=tiktok&handle='+encodeURIComponent(a.handle);
+    else if(a.platform==='youtube'||a.platform==='youtube_long')ep='/api/social?platform=youtube&handle='+encodeURIComponent(a.handle);
     else{alert((PLATFORM_LABELS[a.platform]||a.platform)+' auto-refresh needs that platform’s login (OAuth), which isn’t set up. Enter it manually via Edit.');return;}
     ui.refreshing=id;render();
     try{
