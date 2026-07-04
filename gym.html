@@ -967,6 +967,21 @@ img, video, canvas, svg { max-width: 100%; }
   padding: 10px 12px; border-radius: 10px; margin-bottom: 12px;
 }
 .po-shoulder-banner.show { display: flex; }
+.po-readiness-banner {
+  display: none; flex-direction: column; gap: 6px;
+  background: rgba(251,191,36,0.10); border: 1px solid rgba(251,191,36,0.28);
+  padding: 10px 12px; border-radius: 10px; margin-bottom: 12px;
+}
+.po-readiness-banner.show { display: flex; }
+.po-readiness-banner.low { background: rgba(251,113,133,0.10); border-color: rgba(251,113,133,0.28); }
+.po-readiness-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.po-readiness-score { font-size: 12px; font-weight: 700; color: var(--text-1); }
+.po-readiness-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: rgba(251,191,36,0.18); color: var(--warn); }
+.po-readiness-banner.low .po-readiness-tag { background: rgba(251,113,133,0.18); color: var(--bad); }
+.po-readiness-note { font-size: 12px; color: var(--text-2); margin: 0; line-height: 1.4; }
+.po-readiness-actions { display: flex; align-items: center; gap: 10px; }
+.po-readiness-applied { font-size: 12px; font-weight: 600; color: var(--good); }
+.po-btn-sm { padding: 6px 12px; font-size: 12px; }
 .po-week-target {
   background: var(--fill-1); border: 1px solid var(--border); border-radius: 10px;
   padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;
@@ -979,6 +994,7 @@ img, video, canvas, svg { max-width: 100%; }
   padding: 4px 9px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); flex-shrink: 0;
 }
 .po-week-target-badge.deload { background: rgba(251,191,36,0.14); color: var(--warn); }
+.po-week-target-badge.readiness { background: rgba(251,113,133,0.14); color: var(--bad); }
 .po-tw-past-day {
   background: var(--fill-1);
   border: 1px solid var(--border);
@@ -1630,6 +1646,11 @@ img, video, canvas, svg { max-width: 100%; }
       </div>
     </div>
 
+    <!-- Recovery-adjusted training — shown when today's Garmin Training
+         Readiness is moderate/low. Suggestion only; nothing changes below
+         until "Apply to today's target" is tapped. -->
+    <div class="po-readiness-banner" id="readinessBanner"></div>
+
     <!-- Shoulder-care reminder — shown on Upper A / Upper B only -->
     <div class="po-shoulder-banner" id="shoulderBanner">🩺 <span>Face pulls + band external rotations — every week, no exceptions.</span></div>
 
@@ -1981,6 +2002,78 @@ img, video, canvas, svg { max-width: 100%; }
     for (const b of PROGRAM.blocks) if (b.weeks.indexOf(wk) !== -1) return b;
     return null;
   }
+
+  // ============================================================
+  // RECOVERY-ADJUSTED TRAINING — reads today's Garmin Training Readiness
+  // (synced by index.html's vitals flow into patron_health_v1) and, on
+  // request, softens today's main-lift target (sets/RPE). Suggestion-only:
+  // "This week's target" keeps showing the base plan until the user taps
+  // Apply; the 12-week roadmap reference is never touched.
+  // ============================================================
+  const HEALTH_KEY = 'patron_health_v1';
+  const READINESS_KEY = 'po_coach_readiness_v1';
+  const READINESS_ADJ = {
+    low:      { setsDelta: -2, minSets: 2, rpe: '5–6', label: 'Low',      note: 'Cut volume hard today — stay well short of failure. If warm-up sets still feel heavy, swap for mobility or easy cardio instead.' },
+    moderate: { setsDelta: -1, minSets: 2, rpe: '6–7', label: 'Moderate', note: 'Trim one set and keep reps a notch below max effort today.' }
+  };
+  function readReadiness() {
+    try {
+      const raw = localStorage.getItem(HEALTH_KEY);
+      const h = raw ? JSON.parse(raw) : null;
+      const score = h && h.trainingReadiness != null ? Math.round(h.trainingReadiness) : null;
+      if (score == null) return null;
+      const tier = score < 45 ? 'low' : score < 70 ? 'moderate' : 'high';
+      return { score, tier };
+    } catch (e) { return null; }
+  }
+  function loadReadinessOverride() {
+    try { const raw = localStorage.getItem(READINESS_KEY); return raw ? JSON.parse(raw) : null; }
+    catch (e) { return null; }
+  }
+  function saveReadinessOverride(o) {
+    try {
+      if (o) localStorage.setItem(READINESS_KEY, JSON.stringify(o));
+      else localStorage.removeItem(READINESS_KEY);
+    } catch (e) {}
+  }
+  function todaysReadinessOverride() {
+    const o = loadReadinessOverride();
+    return (o && o.date === wtDateKey(new Date())) ? o : null;
+  }
+  function applyReadinessToScheme(scheme, tier) {
+    const adj = READINESS_ADJ[tier];
+    if (!adj) return scheme;
+    return Object.assign({}, scheme, { sets: Math.max(adj.minSets, scheme.sets + adj.setsDelta), rpe: adj.rpe, readinessAdjusted: true });
+  }
+  function renderReadinessBanner() {
+    const box = $('readinessBanner');
+    if (!box) return;
+    const rest = isRestName(todaySplit().name);
+    const r = readReadiness();
+    if (rest || !r || r.tier === 'high') { box.className = 'po-readiness-banner'; box.innerHTML = ''; return; }
+    const adj = READINESS_ADJ[r.tier];
+    const override = todaysReadinessOverride();
+    const applied = !!(override && override.tier === r.tier);
+    box.className = 'po-readiness-banner show' + (r.tier === 'low' ? ' low' : '');
+    box.innerHTML = '<div class="po-readiness-head">'
+      + '<span class="po-readiness-score">Training Readiness ' + r.score + '</span>'
+      + '<span class="po-readiness-tag">' + adj.label + '</span>'
+      + '</div>'
+      + '<p class="po-readiness-note">' + escape(adj.note) + '</p>'
+      + (applied
+          ? '<div class="po-readiness-actions"><span class="po-readiness-applied">✓ Applied to today\'s target</span><button type="button" class="po-btn-secondary po-btn-sm" id="readinessUndo">Undo</button></div>'
+          : '<div class="po-readiness-actions"><button type="button" class="po-btn-primary po-btn-sm" id="readinessApply">Apply to today\'s target</button></div>');
+    const applyBtn = document.getElementById('readinessApply');
+    if (applyBtn) applyBtn.addEventListener('click', () => {
+      saveReadinessOverride({ date: wtDateKey(new Date()), tier: r.tier });
+      renderAll();
+    });
+    const undoBtn = document.getElementById('readinessUndo');
+    if (undoBtn) undoBtn.addEventListener('click', () => {
+      saveReadinessOverride(null);
+      renderAll();
+    });
+  }
   function programWeekInfo(d) {
     const wk = programWeekNumber(d);
     if (wk < 1) {
@@ -2321,12 +2414,13 @@ img, video, canvas, svg { max-width: 100%; }
       return;
     }
     section.style.display = '';
-    const s = info.scheme;
+    const override = todaysReadinessOverride();
+    const s = override ? applyReadinessToScheme(info.scheme, override.tier) : info.scheme;
     const repTxt = s.repMin === s.repMax ? s.repMin : (s.repMin + '–' + s.repMax);
     $('weekTargetWrap').innerHTML = '<div class="po-week-target">'
       + '<div><div class="po-week-target-main">' + s.sets + ' sets × ' + repTxt + ' reps @ RPE ' + escape(s.rpe) + '</div>'
-      + '<div class="po-week-target-sub">Week ' + info.week + ' · ' + escape(s.block) + '</div></div>'
-      + '<span class="po-week-target-badge' + (s.deload ? ' deload' : '') + '">' + (s.deload ? 'Deload' : escape(s.block)) + '</span>'
+      + '<div class="po-week-target-sub">Week ' + info.week + ' · ' + escape(s.block) + (s.readinessAdjusted ? ' · recovery-adjusted' : '') + '</div></div>'
+      + '<span class="po-week-target-badge' + (s.deload ? ' deload' : (s.readinessAdjusted ? ' readiness' : '')) + '">' + (s.deload ? 'Deload' : (s.readinessAdjusted ? 'Adjusted' : escape(s.block))) + '</span>'
       + '</div>';
   }
 
@@ -2379,6 +2473,7 @@ img, video, canvas, svg { max-width: 100%; }
   function renderAll() {
     renderDayPill();
     renderProgram();
+    renderReadinessBanner();
     renderShoulderBanner();
     renderFilters(); renderSelect(); renderForm(); renderLastSet();
     renderRepsRow();

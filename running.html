@@ -67,6 +67,13 @@
   .weekProgress { display:flex; gap:6px; margin-top:var(--space-3); }
   .weekProgress .wp { flex:1; height:6px; border-radius:3px; background:var(--track); }
   .weekProgress .wp.done { background:var(--pos); }
+
+  .readinessCard { border-color: var(--warn-line); }
+  .readinessCard.low { border-color: var(--neg-line, var(--warn-line)); }
+  .readinessHead { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); flex-wrap:wrap; }
+  .readinessActions { display:flex; align-items:center; gap:var(--space-3); margin-top:var(--space-3); }
+  .readinessApplied { font-size:13px; font-weight:600; color:var(--pos); }
+  .planDay.wasPlan { color:var(--muted); font-family:var(--font-mono); }
 </style>
 </head>
 <body>
@@ -179,6 +186,63 @@ const ui = { type:'interval', distance:'', time:'', notes:'', date: localDateKey
 const TYPE_LABEL = { interval:'Wed Interval/Tempo', long:'Long Run', extra:'Extra' };
 
 /* ============================================================
+ * Recovery-adjusted plan — reads today's Garmin Training Readiness
+ * (synced by index.html's vitals flow into patron_health_v1) and, on
+ * request, swaps today's scheduled session for an easier version.
+ * Suggestion-only: the week's plan above keeps showing as normal until
+ * the user taps Apply, and it auto-expires at midnight (keyed by date).
+ * ============================================================ */
+const HEALTH_KEY = 'patron_health_v1';
+const READINESS_KEY = 'running_readiness_v1';
+const RUN_ADJ = {
+  moderate: { label:'Moderate', interval:'Swap to an easy continuous run (about 20–25min) instead of today’s intervals.', long:'Keep the whole run easy — drop any tempo/surge segment in this week’s target.' },
+  low:      { label:'Low',      interval:'Skip the intervals today — an easy 15–20min jog or full rest is fine.',        long:'Cut the distance by roughly a third and keep it fully conversational, or take the day off.' }
+};
+function readReadiness(){
+  try {
+    const raw = localStorage.getItem(HEALTH_KEY);
+    const h = raw ? JSON.parse(raw) : null;
+    const score = h && h.trainingReadiness != null ? Math.round(h.trainingReadiness) : null;
+    if (score == null) return null;
+    const tier = score < 45 ? 'low' : score < 70 ? 'moderate' : 'high';
+    return { score, tier };
+  } catch(e){ return null; }
+}
+// Interval day = Wed (matches WED_PLAN); long-run day = weekend (matches LONG_PLAN).
+function todaySessionType(){
+  const dow = new Date().getDay();
+  if (dow === 3) return 'interval';
+  if (dow === 0 || dow === 6) return 'long';
+  return null;
+}
+function loadReadinessOverride(){
+  try { const raw = localStorage.getItem(READINESS_KEY); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
+}
+function saveReadinessOverride(o){
+  try { if (o) localStorage.setItem(READINESS_KEY, JSON.stringify(o)); else localStorage.removeItem(READINESS_KEY); } catch(e){}
+}
+function todaysReadinessOverride(){
+  const o = loadReadinessOverride();
+  return (o && o.date === localDateKey()) ? o : null;
+}
+function readinessBannerHtml(){
+  const session = todaySessionType();
+  const r = readReadiness();
+  if (!session || !r || r.tier === 'high') return '';
+  const adj = RUN_ADJ[r.tier];
+  const override = todaysReadinessOverride();
+  const applied = !!(override && override.tier === r.tier && override.session === session);
+  const sessionLabel = session === 'interval' ? "today's interval session" : "today's long run";
+  return '<section class="card readinessCard' + (r.tier==='low'?' low':'') + '">'
+    + '<div class="readinessHead"><span class="cardName">Recovery</span><span class="weekBadge' + (r.tier==='low'?' deload':'') + '">Training Readiness ' + r.score + ' · ' + adj.label + '</span></div>'
+    + '<p class="cardTag" style="margin-top:var(--space-3)">' + esc(adj[session]) + '</p>'
+    + (applied
+        ? '<div class="readinessActions"><span class="readinessApplied">✓ Applied to ' + esc(sessionLabel) + '</span><button type="button" class="btn btn-secondary" data-action="undo-readiness">Undo</button></div>'
+        : '<div class="readinessActions"><button type="button" class="btn btn-primary" data-action="apply-readiness" data-session="' + session + '" data-tier="' + r.tier + '">Apply to ' + esc(sessionLabel) + '</button></div>')
+    + '</section>';
+}
+
+/* ============================================================
  * Views
  * ============================================================ */
 function weekHeroHtml(){
@@ -191,10 +255,13 @@ function weekHeroHtml(){
     badge = '<span class="weekBadge muted">program complete</span>';
     body = '<p class="cardTag" style="margin-top:var(--space-3)">All 12 weeks logged — nice work. Keep logging runs below, or start a new block in gym.html\'s PROGRAM config.</p>';
   } else {
+    const override = todaysReadinessOverride();
+    const wedAdjusted = override && override.session === 'interval' ? RUN_ADJ[override.tier].interval : null;
+    const longAdjusted = override && override.session === 'long' ? RUN_ADJ[override.tier].long : null;
     badge = '<span class="weekBadge' + (info.deload ? ' deload' : '') + '">week ' + info.week + '/' + TOTAL_WEEKS + (info.deload ? ' · deload' : '') + '</span>';
     body = '<div class="planGrid">'
-      + '<div class="planBox"><div class="planLabel">Wed · High intensity</div><div class="planBody">' + esc(info.wed) + '</div></div>'
-      + '<div class="planBox"><div class="planLabel">Weekend · Long run</div><div class="planBody">' + esc(info.long) + '</div></div>'
+      + '<div class="planBox"><div class="planLabel">Wed · High intensity' + (wedAdjusted ? ' · recovery-adjusted' : '') + '</div><div class="planBody">' + esc(wedAdjusted || info.wed) + '</div>' + (wedAdjusted ? '<div class="planDay wasPlan">was: ' + esc(info.wed) + '</div>' : '') + '</div>'
+      + '<div class="planBox"><div class="planLabel">Weekend · Long run' + (longAdjusted ? ' · recovery-adjusted' : '') + '</div><div class="planBody">' + esc(longAdjusted || info.long) + '</div>' + (longAdjusted ? '<div class="planDay wasPlan">was: ' + esc(info.long) + '</div>' : '') + '</div>'
       + '</div>'
       + weekProgressHtml(info.week);
   }
@@ -252,7 +319,7 @@ function runsListHtml(){
 }
 
 function render(){
-  document.getElementById('app').innerHTML = weekHeroHtml() + logFormHtml() + runsListHtml();
+  document.getElementById('app').innerHTML = readinessBannerHtml() + weekHeroHtml() + logFormHtml() + runsListHtml();
 }
 
 /* ============================================================
@@ -297,6 +364,18 @@ document.addEventListener('click', e => {
   if (del) {
     state.runs = state.runs.filter(r => String(r.id) !== del.getAttribute('data-del'));
     save();
+    render();
+    return;
+  }
+  const applyBtn = e.target.closest('[data-action="apply-readiness"]');
+  if (applyBtn) {
+    saveReadinessOverride({ date: localDateKey(), tier: applyBtn.dataset.tier, session: applyBtn.dataset.session });
+    render();
+    return;
+  }
+  const undoBtn = e.target.closest('[data-action="undo-readiness"]');
+  if (undoBtn) {
+    saveReadinessOverride(null);
     render();
   }
 });
