@@ -641,21 +641,97 @@ function tickerHtml(){
     + seq + seq + '</div></div></div>';
 }
 
-/* ---- Daily "did you log it?" reminders (weight + gym), read from each app's storage ---- */
+/* ============================================================
+ * "Today" reminders — two rows:
+ *   To do          — Monday-only: weigh-in + CMJ (or full battery on
+ *                     checkpoint weeks 1/4/8/12), each dropping once
+ *                     today's data shows it's done.
+ *   The week ahead — the Mon-Sat Lower/Upper/run split, only the
+ *                     sessions not yet logged this program week; the
+ *                     row empties out as the week gets ticked off and
+ *                     refills every Monday.
+ * Shares the same Monday 2026-07-06 program anchor as gym.html /
+ * running.html / testing.html's default checkpoint start.
+ * ============================================================ */
+const PROGRAM_START = '2026-07-06';
+const CHECKPOINT_WEEKS = [1, 4, 8, 12];
+function programWeekNumber(d){
+  d = d || new Date();
+  const start = new Date(PROGRAM_START + 'T00:00:00');
+  const t = new Date(d); t.setHours(0,0,0,0); start.setHours(0,0,0,0);
+  const days = Math.floor((t - start) / 86400000);
+  if (days < 0) return 0;
+  return Math.floor(days / 7) + 1;
+}
+function startOfWeek(d){
+  const t = new Date(d); t.setHours(0,0,0,0);
+  const dow = t.getDay(); // 0=Sun..6=Sat
+  t.setDate(t.getDate() + (dow === 0 ? -6 : 1 - dow)); // back up to Monday
+  return t;
+}
 function loggedWeightToday(){ try { const s = lsGet('progress_standalone_v1'); return !!(s && Array.isArray(s.entries) && s.entries.some(e => e && e.dateKey === localDateKey())); } catch(e){ return false; } }
-function loggedGymToday(){ try { const d = lsGet('po_coach_workout_done'); return !!(d && d[localDateKey()]); } catch(e){ return false; } }
-function remindersHtml(){
+function gymDoneOn(dateKey){ try { const d = lsGet('po_coach_workout_done'); return !!(d && d[dateKey]); } catch(e){ return false; } }
+function runDoneThisWeek(type){
+  try {
+    const s = lsGet('running_standalone_v1');
+    if (!s || !Array.isArray(s.runs)) return false;
+    const wk = programWeekNumber();
+    return s.runs.some(r => r && r.type === type && programWeekNumber(new Date(r.dateKey + 'T12:00:00')) === wk);
+  } catch(e){ return false; }
+}
+// VALD test entries carry a full timestamp in `.date`; "today" = local calendar day.
+function valdTestedToday(kind){
+  try {
+    const s = lsGet('vald_testing_cache_v1');
+    const list = s && Array.isArray(s[kind]) ? s[kind] : [];
+    return list.some(t => t && t.date && localDateKey(new Date(t.date)) === localDateKey());
+  } catch(e){ return false; }
+}
+function battTestedToday(){ return valdTestedToday('cmj') && valdTestedToday('imtp') && valdTestedToday('dj'); }
+
+function todoHtml(){
   const items = [];
-  if (!loggedWeightToday()) items.push({ file: 'progress.html', icon: '⚖️', text: 'Log today’s weight' });
-  if (!loggedGymToday()) items.push({ file: 'gym.html', icon: '🏋️', text: 'Log today’s gym' });
+  if (new Date().getDay() === 1) { // Monday
+    if (!loggedWeightToday()) items.push({ file: 'progress.html', icon: '⚖️', text: 'Log today’s weight' });
+    const checkpoint = CHECKPOINT_WEEKS.indexOf(programWeekNumber()) !== -1;
+    if (checkpoint) {
+      if (!battTestedToday()) items.push({ file: 'testing.html', icon: '🧪', text: 'Full testing battery' });
+    } else {
+      if (!valdTestedToday('cmj')) items.push({ file: 'testing.html', icon: '🧪', text: 'CMJ test' });
+    }
+  }
   if (!items.length) return '';
-  return '<div class="reminders" role="status"><span class="remindersLabel">Today</span>'
+  return '<div class="reminders" role="status"><span class="remindersLabel">To do</span>'
     + items.map(r => '<a class="reminderChip" href="' + r.file + '"><span class="reminderDot"></span><span aria-hidden>' + r.icon + '</span> ' + r.text + ' <span class="reminderGo" aria-hidden>→</span></a>').join('')
+    + '</div>';
+}
+
+const WEEK_PLAN = [
+  { dow: 1, label: 'Lower A',   file: 'gym.html',     kind: 'gym' },
+  { dow: 2, label: 'Upper A',   file: 'gym.html',     kind: 'gym' },
+  { dow: 3, label: 'Tempo Run', file: 'running.html', kind: 'run', runType: 'interval' },
+  { dow: 4, label: 'Lower B',   file: 'gym.html',     kind: 'gym' },
+  { dow: 5, label: 'Upper B',   file: 'gym.html',     kind: 'gym' },
+  { dow: 6, label: 'Long Run',  file: 'running.html', kind: 'run', runType: 'long' }
+];
+const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function weekAheadHtml(){
+  const monday = startOfWeek(new Date());
+  const items = WEEK_PLAN.filter(p => {
+    if (p.kind === 'gym') {
+      const d = new Date(monday); d.setDate(d.getDate() + (p.dow - 1));
+      return !gymDoneOn(localDateKey(d));
+    }
+    return !runDoneThisWeek(p.runType);
+  });
+  if (!items.length) return '';
+  return '<div class="reminders" role="status"><span class="remindersLabel">The week ahead</span>'
+    + items.map(p => '<a class="reminderChip" href="' + p.file + '"><span class="reminderDot"></span>' + DOW_SHORT[p.dow] + ' · ' + esc(p.label) + ' <span class="reminderGo" aria-hidden>→</span></a>').join('')
     + '</div>';
 }
 function render(){
   document.getElementById('app').innerHTML =
-    headerHtml() + tickerHtml() + remindersHtml() + '<div class="bento">' + vitalsTileHtml() + APPS.map(cardHtml).join('') + '</div>';
+    headerHtml() + tickerHtml() + todoHtml() + weekAheadHtml() + '<div class="bento">' + vitalsTileHtml() + APPS.map(cardHtml).join('') + '</div>';
   renderModal();
 }
 
