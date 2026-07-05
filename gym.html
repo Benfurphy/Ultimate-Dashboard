@@ -2513,11 +2513,19 @@ img, video, canvas, svg { max-width: 100%; }
   }
   let doneDays = loadDoneDays();
 
+  // Logged sets store a UTC timestamp (new Date().toISOString()), so naively
+  // slicing its first 10 chars gives the UTC calendar date, not the lifter's
+  // local one — for anyone east of UTC (e.g. Australia), a set logged in the
+  // local morning can still fall on the *previous* UTC day, silently filing
+  // it under yesterday and making "today's workout" show as empty. Route
+  // through wtDateKey (local Y/M/D) instead so it matches how "today" itself
+  // is computed everywhere else on this page.
+  function localDayKey(dateIso) { return wtDateKey(new Date(dateIso)); }
   function logsByDay() {
     const byDay = {};
     state.exercises.forEach(ex => {
       (state.logs[ex.id] || []).forEach(l => {
-        const dk = l.date.slice(0, 10);
+        const dk = localDayKey(l.date);
         if (!byDay[dk]) byDay[dk] = [];
         byDay[dk].push({ ex, log: l });
       });
@@ -2920,7 +2928,7 @@ img, video, canvas, svg { max-width: 100%; }
     if (newTodayIdx >= cleaned.length) newTodayIdx = 0;
     state.splitRotation = cleaned;
     state.splitAnchor = {
-      date: new Date().toISOString().slice(0, 10),
+      date: wtDateKey(new Date()),
       index: newTodayIdx
     };
     saveState();
@@ -3267,7 +3275,7 @@ img, video, canvas, svg { max-width: 100%; }
         // Still count volume / sessions even for bodyweight + sparse exercises
         logs.forEach(l => {
           if (new Date(l.date) >= start) {
-            workoutDays.add(l.date.slice(0, 10));
+            workoutDays.add(localDayKey(l.date));
             totalVolumeInWindow += (l.weight || 0) * (l.reps || 0);
           }
         });
@@ -3276,7 +3284,7 @@ img, video, canvas, svg { max-width: 100%; }
       const inWin  = logs.filter(l => new Date(l.date) >= start);
       const before = logs.filter(l => new Date(l.date) < start);
       inWin.forEach(l => {
-        workoutDays.add(l.date.slice(0, 10));
+        workoutDays.add(localDayKey(l.date));
         totalVolumeInWindow += (l.weight || 0) * (l.reps || 0);
       });
       if (!inWin.length || !before.length) return;
