@@ -60,14 +60,26 @@ async function trainingReadiness(client, dateStr) {
   } catch (e) { return null; }
 }
 
-async function handleData(req, res) {
+async function handleData(req, res, localDateStr) {
   const client = L.clientFromCookies(req);
   if (!client) { res.statusCode = 200; res.end(JSON.stringify({ connected: false })); return; }
 
-  const dateStr = toDateStr(new Date());
+  // Body Battery / Training Readiness / sleep are all scoped to the wearer's
+  // local calendar day. The serverless function runs on its own clock (UTC on
+  // Vercel, unrelated to the user's timezone), so computing "today" here with
+  // `new Date()` can land on the wrong side of midnight for anyone outside
+  // UTC — e.g. it's still "yesterday" in UTC well into the morning in
+  // Australia, silently pulling yesterday's numbers. The caller (index.html)
+  // sends its own browser-local date via `?date=`; fall back to the server's
+  // UTC date only if that's missing (keeps this endpoint safe to hit directly).
+  const dateStr = localDateStr || toDateStr(new Date());
+  // garmin-connect's getSleepData() defaults to `new Date()` internally and
+  // converts it using the *server's* timezone offset the same way — passing
+  // noon UTC on the intended date sidesteps that same-clock ambiguity.
+  const sleepDate = new Date(dateStr + 'T12:00:00Z');
   let sleep;
   try {
-    sleep = await client.getSleepData();
+    sleep = await client.getSleepData(sleepDate);
   } catch (e) {
     // Stored session no longer valid — drop it so the UI re-prompts to connect.
     res.statusCode = 200;
@@ -177,7 +189,9 @@ module.exports = async (req, res) => {
     const action = url.searchParams.get('action');
     if (action === 'logout') { handleLogout(req, res); return; }
     if (action === 'activities') { await handleActivities(req, res); return; }
-    await handleData(req, res);
+    const qDate = url.searchParams.get('date');
+    const localDateStr = /^\d{4}-\d{2}-\d{2}$/.test(qDate || '') ? qDate : null;
+    await handleData(req, res, localDateStr);
     return;
   }
   if (req.method === 'POST') {

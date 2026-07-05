@@ -379,7 +379,11 @@ let garminStatus = { connected: false, checked: false };
 async function syncGarmin(){
   if (!ON_SERVER) return;
   try {
-    const r = await fetch('/api/garmin', { cache: 'no-store' });
+    // The serverless function runs on its own clock (UTC on Vercel), which
+    // isn't the wearer's timezone — send our browser-local date so Body
+    // Battery/Training Readiness/sleep are looked up for the right calendar
+    // day instead of silently landing on "yesterday" for anyone outside UTC.
+    const r = await fetch('/api/garmin?date=' + encodeURIComponent(localDateKey()), { cache: 'no-store' });
     const j = await r.json();
     garminStatus = { connected: !!j.connected, checked: true };
     if (j.connected) {
