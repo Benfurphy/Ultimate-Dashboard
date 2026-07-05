@@ -112,9 +112,21 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-ui), -ap
 .btn-link:hover { color: var(--neg); }
 
 /* ---- Modal / dialog ---- */
-.overlay { position: fixed; inset:0; background: var(--overlay); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 1000; display:grid; place-items:center; padding: var(--space-4); animation: fade 200ms var(--ease-premium); }
+/* `position:fixed` ignores body's safe-area padding (it's positioned against
+   the viewport directly), so the overlay needs its own safe-area inset on
+   all four sides — otherwise a tall panel's close button can land under the
+   iPhone notch/status bar. `overflow-y:auto` + `align-items:safe center`
+   (falls back to start-alignment instead of clipping) lets you scroll to
+   reach content that doesn't fit, which plain `place-items:center` blocks. */
+.overlay {
+  position: fixed; inset:0; background: var(--overlay); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 1000;
+  display:flex; align-items:safe center; justify-content:safe center;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding: calc(var(--space-4) + env(safe-area-inset-top)) calc(var(--space-4) + env(safe-area-inset-right)) calc(var(--space-4) + env(safe-area-inset-bottom)) calc(var(--space-4) + env(safe-area-inset-left));
+  animation: fade 200ms var(--ease-premium);
+}
 @keyframes fade { from { opacity:0; } to { opacity:1; } }
-.panel { width: min(480px, 100%); background: var(--bg-elevated); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); padding: var(--space-6); box-shadow: 0 28px 70px -16px rgba(0,0,0,0.6); animation: rise 320ms var(--ease-premium); }
+.panel { width: min(480px, 100%); max-height: calc(100dvh - 2 * var(--space-4) - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y:auto; -webkit-overflow-scrolling:touch; flex-shrink:0; background: var(--bg-elevated); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); padding: var(--space-6); box-shadow: 0 28px 70px -16px rgba(0,0,0,0.6); animation: rise 320ms var(--ease-premium); }
 @keyframes rise { from { opacity:0; transform: translateY(12px) scale(0.98); } to { opacity:1; transform:none; } }
 .panelHead { display:flex; align-items:flex-start; justify-content:space-between; gap: var(--space-3); margin-bottom: var(--space-5); }
 .panelEyebrow { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase; color: var(--brand); }
