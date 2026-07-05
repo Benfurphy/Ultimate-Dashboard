@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0C0C12" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Patron" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+
+<title>Daily Mobility · Chasing Legendary Status</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("patron_theme")||"nocturne");}catch(e){document.documentElement.setAttribute("data-theme","nocturne");}</script>
+
+<link rel="stylesheet" href="theme.css" />
+
+<style>
+  .shell { max-width: 640px; }
+  .stack { display:flex; flex-direction:column; gap: var(--space-4); }
+
+  .tickRow { display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); margin-top: var(--space-4); }
+  .tickBtn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding: var(--space-5) var(--space-3); border-radius: var(--radius-lg); border:1px solid var(--border); background:var(--surface); cursor:pointer; font-family:var(--font-ui); color:var(--fg); transition:border-color var(--duration) var(--ease-premium), background var(--duration) var(--ease-premium); }
+  .tickBtn:hover { border-color:var(--brand-line); background:var(--brand-soft); }
+  .tickBtn.on { border-color:var(--brand-line); background:var(--brand-soft); }
+  .tickBox { width:22px; height:22px; border-radius:6px; border:2px solid var(--border-strong); display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--brand-ink); transition:background var(--duration) var(--ease-premium), border-color var(--duration) var(--ease-premium); }
+  .tickBtn.on .tickBox { background:var(--brand); border-color:var(--brand); }
+  .tickMins { font-family:var(--font-display); font-weight:600; font-size:var(--text-lg); }
+  .tickHint { font-family:var(--font-mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .todayCleared { text-align:center; font-size:12px; color:var(--muted); margin: var(--space-3) 0 0; }
+
+  .statRow { display:flex; gap: var(--space-3); flex-wrap:wrap; }
+  .statBox { flex:1; min-width:130px; padding: var(--space-4); border:1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+  .statBox .statVal { font-family:var(--font-display); font-weight:600; font-size: var(--text-2xl); letter-spacing:-0.02em; }
+  .statBox .statLbl { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-top:2px; }
+
+  .rowItem { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); padding:10px 0; border-bottom:1px solid var(--border); }
+  .rowItem:last-child { border-bottom:0; }
+  .rowMain { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .rowName { font-weight:600; font-size:14px; }
+  .rowMeta { font-family:var(--font-mono); font-size:11px; color:var(--muted); }
+  .rowDel { appearance:none; background:transparent; border:0; color:var(--muted); font-size:18px; line-height:1; cursor:pointer; padding:4px 8px; border-radius:6px; }
+  .rowDel:hover { color:var(--neg); }
+  .rowEmpty { text-align:center; padding: var(--space-5) 0; color:var(--muted); font-size:13px; font-style:italic; }
+</style>
+</head>
+<body>
+<main class="page grain-overlay">
+  <div class="shell">
+
+    <header class="header">
+      <div>
+        <h1 class="title">Daily Mobility</h1>
+        <p class="subtitle">morning mobility · pick today's session</p>
+      </div>
+      <div class="headerControls">
+        <a class="backLink" href="index.html">← Dashboard</a>
+        <span id="themeSeg"></span>
+      </div>
+    </header>
+
+    <div id="app" class="stack"></div>
+
+  </div>
+</main>
+
+<script src="theme.js"></script>
+<script>
+document.getElementById('themeSeg').innerHTML = Patron.switcherHtml();
+
+/* ============================================================
+ * Helpers
+ * ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function localDateKey(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function activeDateKey(d){ d=d?new Date(d):new Date(); if(d.getHours()<6) d.setDate(d.getDate()-1); return localDateKey(d); }
+function fmtDate(key){ return new Date(key+'T12:00:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'}); }
+function monthKey(key){ return key.slice(0,7); } // 'YYYY-MM'
+
+const OPTIONS = [8, 15, 22];
+
+/* ============================================================
+ * State
+ * ============================================================ */
+const LS = 'mobility_standalone_v1';
+function seed(){ return { version:1, logs:{} }; }
+function load(){
+  try {
+    const r = localStorage.getItem(LS);
+    const s = r ? Object.assign(seed(), JSON.parse(r)) : seed();
+    if (!s.logs || typeof s.logs!=='object') s.logs = {};
+    return s;
+  } catch(e){ return seed(); }
+}
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
+let state = load();
+
+/* ============================================================
+ * Actions
+ * ============================================================ */
+const A = {
+  // Tapping the already-selected length clears today (undo); otherwise sets it.
+  pick(mins){
+    const key = activeDateKey();
+    state.logs[key] = (state.logs[key] === mins) ? null : mins;
+    if (state.logs[key] == null) delete state.logs[key];
+    save(); render();
+  },
+  deleteEntry(key){
+    delete state.logs[key];
+    save(); render();
+  },
+};
+
+/* ============================================================
+ * Derived
+ * ============================================================ */
+function monthTotal(ref){
+  const mk = monthKey(ref || activeDateKey());
+  let mins = 0, sessions = 0;
+  Object.keys(state.logs).forEach(k => {
+    if (monthKey(k) === mk) { mins += state.logs[k]; sessions++; }
+  });
+  return { mins, sessions };
+}
+
+/* ============================================================
+ * Views
+ * ============================================================ */
+function todayHtml(){
+  const key = activeDateKey();
+  const picked = state.logs[key] || null;
+  const tiles = OPTIONS.map(m =>
+    '<button type="button" class="tickBtn' + (picked===m?' on':'') + '" data-act="pick" data-mins="' + m + '">'
+    + '<span class="tickBox">' + (picked===m ? '✓' : '') + '</span>'
+    + '<span class="tickMins">' + m + '</span>'
+    + '<span class="tickHint">minutes</span>'
+    + '</button>'
+  ).join('');
+  return '<section class="card"><span class="cardName">Today — ' + fmtDate(key) + '</span>'
+    + '<p class="cardTag" style="margin-top:var(--space-2)">Which mobility session did you do this morning?</p>'
+    + '<div class="tickRow">' + tiles + '</div>'
+    + (picked ? '' : '<p class="todayCleared">Nothing logged yet today.</p>')
+    + '</section>';
+}
+function statsHtml(){
+  const t = monthTotal();
+  return '<section class="card"><span class="cardName">This month</span>'
+    + '<div class="statRow" style="margin-top:var(--space-3)">'
+    + '<div class="statBox"><div class="statVal">' + t.mins + '</div><div class="statLbl">minutes stretched</div></div>'
+    + '<div class="statBox"><div class="statVal">' + t.sessions + '</div><div class="statLbl">session' + (t.sessions===1?'':'s') + ' logged</div></div>'
+    + '</div></section>';
+}
+function historyHtml(){
+  const todayKey = activeDateKey();
+  const keys = Object.keys(state.logs).filter(k=>k!==todayKey).sort((a,b)=>b.localeCompare(a));
+  if (!keys.length) return '';
+  const rows = keys.map(k =>
+    '<div class="rowItem"><div class="rowMain"><span class="rowName">' + fmtDate(k) + '</span>'
+    + '<span class="rowMeta">' + state.logs[k] + ' minutes</span></div>'
+    + '<button type="button" class="rowDel" data-act="deleteEntry" data-key="' + esc(k) + '" aria-label="Remove">×</button></div>'
+  ).join('');
+  return '<section class="card"><span class="cardName">Past sessions</span>' + rows + '</section>';
+}
+function render(){
+  document.getElementById('app').innerHTML = todayHtml() + statsHtml() + historyHtml();
+}
+
+/* ============================================================
+ * Events
+ * ============================================================ */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'pick') A.pick(Number(b.dataset.mins));
+  else if (act === 'deleteEntry') A.deleteEntry(b.dataset.key);
+});
+window.addEventListener('storage', e => { if (e.key === LS) { state = load(); render(); } });
+
+render();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="db.js"></script>
+<script src="cloud-sync.js"></script>
+</body>
+</html>
