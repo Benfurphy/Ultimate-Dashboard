@@ -277,6 +277,28 @@ let state=load();
 let photos=loadPhotos();
 const ui={draft:'',editing:false,error:null,photosOpen:false,viewerId:null,compareId:null,confirmDelete:false};
 
+/* ===================== One-time import cleanup =====================
+ * Entries under 80kg were flagged as leftover placeholder/imported data,
+ * not the user's own. Runs at most once ever (gated by CLEANUP_FLAG) and
+ * asks before removing anything, so a future *real* weight under 80kg is
+ * never silently touched. Must run after any cloud pull (see cloudHydrate
+ * below) so it acts on the final, authoritative entry list. */
+const CLEANUP_FLAG='progress_cleanup_below80_v1';
+function cleanupImportedWeights(){
+  if(localStorage.getItem(CLEANUP_FLAG))return;
+  const bad=state.entries.filter(e=>e&&e.weightKg<80);
+  if(!bad.length){try{localStorage.setItem(CLEANUP_FLAG,'1');}catch{}return;}
+  const list=bad.slice().sort((a,b)=>a.dateKey.localeCompare(b.dateKey))
+    .map(e=>photoDate(e.dateKey)+': '+e.weightKg+'kg').join('\n');
+  const ok=confirm('Found '+bad.length+' logged weight'+(bad.length===1?'':'s')+' under 80kg that look like leftover imported data:\n\n'+list+'\n\nRemove '+(bad.length===1?'it':'them')+'?');
+  if(ok){
+    state.entries=state.entries.filter(e=>!(e&&e.weightKg<80));
+    save();
+    render();
+  }
+  try{localStorage.setItem(CLEANUP_FLAG,'1');}catch{}
+}
+
 /* Derived */
 function sortedEntries(){return state.entries.slice().sort((a,b)=>a.dateKey.localeCompare(b.dateKey));}
 function latest(){const s=sortedEntries();return s[s.length-1]||null;}
@@ -502,7 +524,7 @@ applyTheme(currentTheme);
  * Render locally first (above), then pull cloud copies and re-render. If the cloud
  * is empty (just connected), seed it with what's already on this device. */
 (async function cloudHydrate(){
-  if(!window.PatronDB||!PatronDB.isCloud())return;
+  if(!window.PatronDB||!PatronDB.isCloud()){cleanupImportedWeights();return;}
   try{
     const cs=await PatronDB.get('patron-progress');
     if(cs&&Array.isArray(cs.entries)){state={units:cs.units||state.units,entries:cs.entries};try{localStorage.setItem(LS,JSON.stringify(state));}catch{}}
@@ -512,6 +534,7 @@ applyTheme(currentTheme);
     else if(photos.length){PatronDB.set('patron-progress-photos',photos);}
     render();
   }catch(_){}
+  cleanupImportedWeights();
 })();
 </script>
 </body>
