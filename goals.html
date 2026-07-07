@@ -242,135 +242,6 @@ body::after {
   .goal-ticker-meta { font-size: 10px; padding: 2px 7px; }
 }
 
-/* ===== Component 3: Day Ring ===== */
-.day-ring-wrap {
-  position: relative;
-  display: flex; flex-wrap: wrap;
-  align-items: center; justify-content: center;
-  gap: 26px;
-  padding: 22px;
-  margin-bottom: 22px;
-  border-radius: 16px;
-  background: var(--surface);
-  backdrop-filter: blur(24px) saturate(1.2);
-  -webkit-backdrop-filter: blur(24px) saturate(1.2);
-  box-shadow: 0 12px 40px var(--card-shadow-c);
-}
-.day-ring {
-  position: relative;
-  width: 168px; height: 168px;
-  flex-shrink: 0;
-}
-.day-ring svg { width: 100%; height: 100%; display: block; }
-.day-ring-track { fill: none; stroke: var(--border); stroke-width: 8; }
-.day-ring-fill {
-  fill: none;
-  stroke-width: 8;
-  stroke-linecap: round;
-  transform: rotate(-90deg);
-  transform-origin: 60px 60px;
-  transition: stroke 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-              stroke-dashoffset 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.day-ring-overlay {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  pointer-events: none;
-}
-.day-ring-percent {
-  font-size: 40px; font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
-  color: var(--text-primary);
-  line-height: 1;
-}
-.day-ring-phase {
-  margin-top: 5px;
-  font-family: var(--font-mono);
-  font-size: 9.5px; font-weight: 800;
-  letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-.day-ring-clock {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--text-tertiary);
-  margin-top: 2px;
-}
-.day-ring-text {
-  display: flex; flex-direction: column;
-  gap: 6px;
-  max-width: 280px;
-}
-.day-ring-status { font-size: 14px; font-weight: 700; color: var(--text-primary); }
-.day-ring-remaining { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
-.day-ring-hours { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
-@media (max-width: 480px) {
-  .day-ring { width: 144px; height: 144px; }
-  .day-ring-percent { font-size: 32px; }
-  .day-ring-status { font-size: 13px; }
-}
-/* Estimated sleep line — recommended bedtime derived from vitals */
-.day-ring-est {
-  display: inline-flex; align-items: center; gap: 7px;
-  margin-top: 2px; padding: 5px 11px;
-  border-radius: 999px;
-  background: var(--brand-soft); border: 1px solid var(--brand-line);
-  font-family: var(--font-mono); font-size: 11px; color: var(--brand-2);
-  white-space: nowrap; align-self: flex-start;
-}
-.day-ring-est b { color: var(--text-primary); font-weight: 700; }
-.day-ring-est-sub { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary); margin-top: 1px; }
-/* Settings gear + popover */
-.day-ring-gear {
-  position: absolute; top: 12px; right: 12px;
-  width: 30px; height: 30px; display: grid; place-items: center;
-  border-radius: 50%; cursor: pointer;
-  background: var(--surface-1); border: 1px solid var(--border);
-  color: var(--text-secondary); font-size: 14px; line-height: 1;
-  transition: border-color .2s, color .2s, background .2s;
-}
-.day-ring-gear:hover { color: var(--text-primary); border-color: var(--border-strong); background: var(--surface); }
-.day-pop {
-  position: absolute; top: 48px; right: 12px; z-index: 30;
-  width: min(310px, calc(100% - 24px));
-  padding: 16px;
-  border-radius: 14px;
-  background: var(--bg); border: 1px solid var(--border-strong);
-  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-}
-.day-pop[hidden] { display: none; }
-.day-pop-title { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--text-primary); margin-bottom: 3px; }
-.day-pop-note { font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; color: var(--text-tertiary); margin-bottom: 12px; }
-.day-pop-seg { display: flex; gap: 6px; margin-bottom: 13px; }
-.day-pop-seg button {
-  flex: 1; padding: 8px 6px; cursor: pointer;
-  border-radius: 9px; border: 1px solid var(--border); background: var(--surface-1);
-  color: var(--text-secondary); font-family: inherit; font-size: 11px; font-weight: 600;
-  transition: all .18s;
-}
-.day-pop-seg button.active { border-color: var(--brand); background: var(--brand-soft); color: var(--text-primary); }
-.day-pop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.day-pop-field { display: flex; flex-direction: column; gap: 5px; }
-.day-pop-field label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary); }
-.day-pop-field input {
-  width: 100%; padding: 8px 9px; box-sizing: border-box;
-  border-radius: 8px; border: 1px solid var(--border); background: var(--surface-1);
-  color: var(--text-primary); font-family: var(--font-mono); font-size: 13px;
-}
-.day-pop-field input:disabled { opacity: 0.5; }
-.day-pop-field input:focus { outline: none; border-color: var(--brand-line); }
-.day-pop-src { margin-top: 11px; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
-.day-pop-src b { color: var(--brand-2); }
-.day-pop-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
-.day-pop-actions button {
-  padding: 8px 14px; cursor: pointer; border-radius: 9px;
-  font-family: inherit; font-size: 12px; font-weight: 700; border: 1px solid transparent;
-}
-.day-pop-save { background: var(--brand); color: var(--brand-ink); }
-.day-pop-cancel { background: transparent; border-color: var(--border); color: var(--text-secondary); }
-
 /* ===== Component 4: section + To Do List ===== */
 .section { margin-top: 8px; }
 .section-title {
@@ -722,7 +593,7 @@ body::after {
 }
 
 /* --- Patron display type --- */
-.dash-title, .day-ring-percent, .gm-progress-num { font-family: var(--font-display); }
+.dash-title, .gm-progress-num { font-family: var(--font-display); }
 /* --- header + theme switcher --- */
 .back { display:inline-flex; align-items:center; gap:6px; align-self:flex-start; padding:6px 13px 6px 9px; background:var(--brand-soft); border:1px solid var(--brand-line); border-radius:999px; color:var(--brand); font-size:12px; font-weight:600; letter-spacing:.01em; text-decoration:none; margin-bottom:14px; transition:background .2s ease, border-color .2s ease; }
 .back:hover { border-color:var(--brand); background:color-mix(in srgb, var(--brand) 18%, transparent); }
@@ -755,51 +626,6 @@ body::after {
         </div>
       </div>
       <div class="goal-ticker-meta" id="goalTickerMeta">0/0</div>
-    </div>
-  </div>
-
-  <div class="day-ring-wrap">
-    <button type="button" class="day-ring-gear" id="dayRingGear" title="Wake &amp; sleep settings" aria-label="Wake and sleep settings">⚙</button>
-    <div class="day-pop" id="dayPop" hidden>
-      <div class="day-pop-title">Wake &amp; sleep window</div>
-      <div class="day-pop-note" id="dayPopNote">Pulls your times from Whoop / Apple Watch. Switch to Manual to set them yourself.</div>
-      <div class="day-pop-seg" id="dayPopSeg">
-        <button type="button" data-mode="auto">Auto from vitals</button>
-        <button type="button" data-mode="manual">Manual</button>
-      </div>
-      <div class="day-pop-grid">
-        <div class="day-pop-field"><label for="dayPopWake">Wake time</label><input type="time" id="dayPopWake"></div>
-        <div class="day-pop-field"><label for="dayPopSleep">Bedtime</label><input type="time" id="dayPopSleep"></div>
-      </div>
-      <div class="day-pop-src" id="dayPopSrc"></div>
-      <div class="day-pop-actions">
-        <button type="button" class="day-pop-cancel" id="dayPopCancel">Cancel</button>
-        <button type="button" class="day-pop-save" id="dayPopSave">Save</button>
-      </div>
-    </div>
-    <div class="day-ring">
-      <svg viewBox="0 0 120 120">
-        <defs>
-          <filter id="dayRingGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="2.4" result="b" />
-            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-        <circle class="day-ring-track" cx="60" cy="60" r="52" />
-        <circle class="day-ring-fill"  cx="60" cy="60" r="52" id="dayRingFill" filter="url(#dayRingGlow)" />
-      </svg>
-      <div class="day-ring-overlay">
-        <div class="day-ring-percent" id="dayRingPercent">—</div>
-        <div class="day-ring-phase"   id="dayRingPhase">—</div>
-        <div class="day-ring-clock"   id="dayRingClock">—</div>
-      </div>
-    </div>
-    <div class="day-ring-text">
-      <div class="day-ring-status"    id="dayRingStatus">Loading…</div>
-      <div class="day-ring-remaining" id="dayRingRemaining">—</div>
-      <div class="day-ring-hours"     id="dayRingHours">8:00 AM – 12:00 AM</div>
-      <div class="day-ring-est"       id="dayRingEst" hidden></div>
-      <div class="day-ring-est-sub"   id="dayRingEstSub"></div>
     </div>
   </div>
 
@@ -885,55 +711,6 @@ body::after {
   // Paste your Anthropic key here to enable ✨ Polish. Empty = falls back to plain add.
   const ANTHROPIC_API_KEY = '';
 
-  // Day window is dynamic: pulled from the suite-wide vitals record (Whoop / Apple
-  // Watch / manual entry), or overridden manually via the ⚙ popover. Defaults 8 / 24.
-  let WAKE_HOUR  = 8;
-  let SLEEP_HOUR = 24;
-  const DAY_WINDOW_KEY = 'goals:dayWindow';
-  const SUITE_HEALTH_KEY = 'patron_health_v1';
-  const LEGACY_WHOOP_KEY = 'patron_whoop_data_v1';
-
-  function readHealth() {
-    try {
-      let r = localStorage.getItem(SUITE_HEALTH_KEY);
-      if (r) { const d = JSON.parse(r); if (d && d.connected) return d; }
-      r = localStorage.getItem(LEGACY_WHOOP_KEY);
-      if (r) { const d = JSON.parse(r); if (d && d.connected) return Object.assign({ source: 'whoop' }, d); }
-    } catch (e) {}
-    return null;
-  }
-  function readWindowPrefs() {
-    const d = storeGet(DAY_WINDOW_KEY);
-    return (d && typeof d === 'object') ? d : { mode: 'auto', wake: '', sleep: '' };
-  }
-  function hm2dec(str) { if (!str) return null; const p = String(str).split(':'); const h = Number(p[0]), m = Number(p[1] || 0); return isFinite(h) ? h + (m || 0) / 60 : null; }
-  function dec2hm(dec) { let h = Math.floor(((dec % 24) + 24) % 24); let m = Math.round(((dec % 1) + 1) % 1 * 60); if (m === 60) { m = 0; h = (h + 1) % 24; } return pad2(h) + ':' + pad2(m); }
-  function dec2clock(dec) { const h = Math.floor(((dec % 24) + 24) % 24); let m = Math.round(((dec % 1) + 1) % 1 * 60); let hh = h; if (m === 60) { m = 0; hh = (hh + 1) % 24; } const ap = hh < 12 ? 'AM' : 'PM'; let h12 = hh % 12; if (h12 === 0) h12 = 12; return h12 + ':' + pad2(m) + ' ' + ap; }
-  function sourceLabel(s) { return s === 'apple' ? 'Apple Watch' : s === 'manual' ? 'Manual entry' : s === 'whoop' ? 'Whoop' : ''; }
-
-  // Resolve the active wake/sleep window from prefs + vitals. Sleep hour is
-  // normalised to be > wake hour (a 1am bedtime becomes 25 for the day-arc math).
-  function resolveWindow() {
-    const prefs = readWindowPrefs();
-    const health = readHealth();
-    let wakeStr = null, sleepStr = null, source = 'default';
-    if (prefs.mode === 'manual' && (prefs.wake || prefs.sleep)) {
-      wakeStr = prefs.wake || '08:00'; sleepStr = prefs.sleep || '00:00'; source = 'manual-override';
-    } else if (health && (health.wakeTime || health.bedtime)) {
-      wakeStr = health.wakeTime || '08:00'; sleepStr = health.bedtime || '00:00'; source = health.source || 'whoop';
-    } else {
-      wakeStr = '08:00'; sleepStr = '00:00'; source = 'default';
-    }
-    let wakeHour = hm2dec(wakeStr); if (wakeHour == null) wakeHour = 8;
-    let sleepHour = hm2dec(sleepStr); if (sleepHour == null) sleepHour = 24;
-    if (sleepHour <= wakeHour) sleepHour += 24; // bedtime after midnight
-    return { wakeHour, sleepHour, wakeStr, sleepStr, source, health, prefs };
-  }
-  function applyWindow() {
-    const w = resolveWindow();
-    WAKE_HOUR = w.wakeHour; SLEEP_HOUR = w.sleepHour;
-    return w;
-  }
 
   // ---------- storage helpers ----------
   function storeGet(key) {
@@ -1079,144 +856,6 @@ body::after {
     cycleIdx = 0;
     tick();
   });
-
-  // ---------- Day Ring ----------
-  const PALETTE = [
-    [0,    [199, 187, 255]],
-    [12.5, [183, 168, 255]],
-    [25,   [167, 150, 255]],
-    [37.5, [150, 132, 250]],
-    [50,   [139, 124, 255]],
-    [62.5, [150, 108, 230]],
-    [75,   [146,  92, 205]],
-    [87.5, [110,  78, 175]],
-    [100,  [ 72,  64, 140]]
-  ];
-  function lerp(a, b, t) { return a + (b - a) * t; }
-  function paletteAt(p) {
-    if (p <= PALETTE[0][0]) return PALETTE[0][1];
-    if (p >= PALETTE[PALETTE.length - 1][0]) return PALETTE[PALETTE.length - 1][1];
-    for (let i = 0; i < PALETTE.length - 1; i++) {
-      const [p0, c0] = PALETTE[i];
-      const [p1, c1] = PALETTE[i + 1];
-      if (p >= p0 && p <= p1) {
-        const t = (p - p0) / (p1 - p0);
-        return [lerp(c0[0], c1[0], t), lerp(c0[1], c1[1], t), lerp(c0[2], c1[2], t)];
-      }
-    }
-    return [255,255,255];
-  }
-  function rgb(c) { return 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')'; }
-
-  function formatClock(d) {
-    let h = d.getHours();
-    const m = d.getMinutes();
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12;
-    if (h === 0) h = 12;
-    return h + ':' + pad2(m) + ' ' + ampm;
-  }
-  function formatRemaining(totalMin) {
-    const h = Math.floor(totalMin / 60);
-    const m = Math.floor(totalMin % 60);
-    return h + 'h ' + m + 'm';
-  }
-
-  const C = 2 * Math.PI * 52;
-  const fillEl = document.getElementById('dayRingFill');
-  fillEl.setAttribute('stroke-dasharray', C);
-  fillEl.setAttribute('stroke-dashoffset', C);
-
-  // Recommended bedtime from sleep need (target nudged up when recovery is low).
-  function estimatedBedtime(w) {
-    const h = w.health;
-    if (!h && w.source !== 'manual-override') return null; // nothing personalised to base it on
-    let need = (h && h.sleepTargetHours) || 8;
-    let basis;
-    if (h && h.recovery != null) {
-      const r = h.recovery;
-      need += r < 34 ? 1 : r < 50 ? 0.5 : r < 67 ? 0.25 : 0;
-      need = Math.round(need * 10) / 10;
-      basis = 'for ' + need + 'h — tuned to your ' + Math.round(r) + '% recovery';
-    } else {
-      need = Math.round(need * 10) / 10;
-      basis = 'for your ' + need + 'h sleep target';
-    }
-    const bedDec = (WAKE_HOUR + 24) - need; // the night before the next wake-up
-    return { bedDec, need, basis };
-  }
-  function renderWindowExtras(w) {
-    const hoursEl = document.getElementById('dayRingHours');
-    const estEl   = document.getElementById('dayRingEst');
-    const estSub  = document.getElementById('dayRingEstSub');
-    if (hoursEl) hoursEl.textContent = dec2clock(WAKE_HOUR) + ' – ' + dec2clock(SLEEP_HOUR);
-    if (!estEl || !estSub) return;
-    const est = estimatedBedtime(w);
-    if (est) {
-      estEl.hidden = false;
-      estEl.innerHTML = '💤 Sleep by <b>' + dec2clock(est.bedDec) + '</b>';
-      estSub.textContent = est.basis + (w.source && w.source !== 'manual-override' && w.source !== 'default' ? ' · via ' + sourceLabel(w.source) : '');
-    } else {
-      estEl.hidden = true;
-      estSub.textContent = 'Add vitals (Whoop / Apple Watch) to estimate your ideal bedtime.';
-    }
-  }
-
-  function updateDayRing() {
-    const w = applyWindow();
-    renderWindowExtras(w);
-    const now = new Date();
-    let hours = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
-    // Past-midnight bedtime (SLEEP_HOUR > 24): if it's the small hours but still
-    // before bedtime, treat as "late evening" of the same day rather than asleep.
-    if (hours < WAKE_HOUR && SLEEP_HOUR > 24 && (hours + 24) < SLEEP_HOUR) hours += 24;
-    const percentEl   = document.getElementById('dayRingPercent');
-    const phaseEl     = document.getElementById('dayRingPhase');
-    const clockEl     = document.getElementById('dayRingClock');
-    const statusEl    = document.getElementById('dayRingStatus');
-    const remainingEl = document.getElementById('dayRingRemaining');
-
-    clockEl.textContent = formatClock(now);
-
-    if (hours < WAKE_HOUR) {
-      fillEl.setAttribute('stroke-dashoffset', C);
-      fillEl.style.stroke = '#4D4B47';
-      percentEl.textContent = '—';
-      phaseEl.textContent   = 'SLEEPING';
-      statusEl.textContent  = '😴 Still sleeping';
-      const minsUntil = (WAKE_HOUR - hours) * 60;
-      remainingEl.textContent = formatRemaining(minsUntil) + ' until wake-up';
-      return;
-    }
-
-    if (hours >= SLEEP_HOUR) {
-      fillEl.setAttribute('stroke-dashoffset', 0);
-      fillEl.style.stroke = '#FB7185';
-      percentEl.textContent = '100%';
-      phaseEl.textContent   = 'PAST BEDTIME';
-      statusEl.textContent  = '⚠️ Past bedtime';
-      remainingEl.textContent = 'Sleep!';
-      return;
-    }
-
-    const span = SLEEP_HOUR - WAKE_HOUR;
-    const percent = (hours - WAKE_HOUR) / span * 100;
-    fillEl.setAttribute('stroke-dashoffset', C * (1 - percent / 100));
-    fillEl.style.stroke = rgb(paletteAt(percent));
-    percentEl.textContent = Math.floor(percent) + '%';
-
-    let phase, status;
-    if (percent < 25)      { phase = 'MORNING';   status = '☀️ Morning — fresh start'; }
-    else if (percent < 50) { phase = 'MIDDAY';    status = '⚡ Midday — keep moving'; }
-    else if (percent < 75) { phase = 'AFTERNOON'; status = '🔥 Afternoon — push it'; }
-    else if (percent < 90) { phase = 'EVENING';   status = '⏳ Evening — wrap up'; }
-    else                   { phase = 'BEDTIME';   status = '🌙 Bedtime soon'; }
-    phaseEl.textContent  = phase;
-    statusEl.textContent = status;
-
-    const minsLeft = (SLEEP_HOUR - hours) * 60;
-    remainingEl.textContent = formatRemaining(minsLeft) + ' awake time left';
-  }
 
   // ---------- Row building ----------
   function makeInlineEdit(textEl, goals, idx, key, reload) {
@@ -1533,58 +1172,6 @@ body::after {
     loadTomorrow
   );
 
-  // ---------- Wake/sleep settings popover ----------
-  function setupDayWindowPopover() {
-    const gear   = document.getElementById('dayRingGear');
-    const pop     = document.getElementById('dayPop');
-    const seg      = document.getElementById('dayPopSeg');
-    const wakeIn   = document.getElementById('dayPopWake');
-    const sleepIn  = document.getElementById('dayPopSleep');
-    const srcEl    = document.getElementById('dayPopSrc');
-    const noteEl   = document.getElementById('dayPopNote');
-    const saveBtn  = document.getElementById('dayPopSave');
-    const cancelBtn= document.getElementById('dayPopCancel');
-    if (!gear || !pop) return;
-    let draftMode = 'auto';
-
-    function paintMode() {
-      seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === draftMode));
-      const auto = draftMode === 'auto';
-      wakeIn.disabled = auto; sleepIn.disabled = auto;
-      noteEl.textContent = auto
-        ? 'Auto pulls your times from Whoop / Apple Watch. Switch to Manual to set them yourself.'
-        : 'Manual: these times drive your day ring regardless of vitals.';
-    }
-    function fillFromState() {
-      const prefs = readWindowPrefs();
-      const w = resolveWindow();
-      draftMode = prefs.mode === 'manual' ? 'manual' : 'auto';
-      // show the currently-active resolved times in the inputs
-      wakeIn.value  = dec2hm(w.wakeHour);
-      sleepIn.value = dec2hm(w.sleepHour);
-      const hasVitals = !!w.health && (w.health.wakeTime || w.health.bedtime);
-      srcEl.innerHTML = hasVitals
-        ? 'Vitals source: <b>' + sourceLabel(w.health.source) + '</b>' + (w.health.wakeTime && w.health.bedtime ? ' — wake ' + dec2clock(hm2dec(w.health.wakeTime)) + ', bed ' + dec2clock(hm2dec(w.health.bedtime)) : '')
-        : 'No wake/sleep times in your vitals yet — add them on the dashboard or set Manual.';
-      paintMode();
-    }
-    function open()  { fillFromState(); pop.hidden = false; }
-    function close() { pop.hidden = true; }
-
-    gear.addEventListener('click', (e) => { e.stopPropagation(); pop.hidden ? open() : close(); });
-    seg.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; draftMode = b.dataset.mode; paintMode(); });
-    cancelBtn.addEventListener('click', close);
-    saveBtn.addEventListener('click', () => {
-      const prefs = { mode: draftMode, wake: wakeIn.value || '', sleep: sleepIn.value || '' };
-      storeSet(DAY_WINDOW_KEY, prefs);
-      close();
-      updateDayRing();
-    });
-    // close on outside click / Esc
-    document.addEventListener('click', (e) => { if (!pop.hidden && !pop.contains(e.target) && e.target !== gear) close(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) close(); });
-  }
-
   // ---------- TickTick sync ----------
   // When connected, this section takes over from the local rollover list —
   // same data source shown on the dashboard's To Do tile via TT_CACHE_KEY.
@@ -1698,17 +1285,12 @@ body::after {
   rollover();
   loadToday();
   loadTomorrow();
-  setupDayWindowPopover();
-  updateDayRing();
-  setInterval(updateDayRing, 60 * 1000);
   startTicker();
   initTickTick();
 
   // Re-render when storage changes from another tab (or our bridged parent).
   window.addEventListener('storage', (e) => {
     loadToday(); loadTomorrow();
-    // vitals updated elsewhere (dashboard / Whoop tab) → refresh the day window
-    if (!e || !e.key || e.key === SUITE_HEALTH_KEY || e.key === LEGACY_WHOOP_KEY || e.key === DAY_WINDOW_KEY) updateDayRing();
   });
 })();
 </script>
