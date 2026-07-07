@@ -191,11 +191,14 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-ui), -ap
 .glassPctLg { font-size: 16px; padding-top:12px; }
 .card.cardAqua:hover { border-color: var(--aqua-line); background: var(--aqua-soft); box-shadow: 0 0 40px -18px var(--aqua-glow), var(--card-shadow); }
 .card.cardAqua:hover .cardArrow { color: var(--aqua); }
-.ringWrap { position: relative; width: 60px; height: 60px; display:grid; place-items:center; flex-shrink:0; }
-.ringWrap svg { position:absolute; inset:0; transform: rotate(-90deg); }
-.ringTrack { fill:none; stroke: var(--track); stroke-width: 7; }
-.ringFill { fill:none; stroke: var(--warn); stroke-width: 7; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(251,191,36,0.5)); }
-.ringNum { font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: -0.02em; }
+.todoList { display:flex; flex-direction:column; gap:6px; margin-top:auto; }
+.todoRow { display:flex; align-items:center; gap:8px; }
+.todoCheck { width:14px; height:14px; border-radius:4px; border:1.5px solid var(--border-strong); flex-shrink:0; display:grid; place-items:center; font-size:9px; }
+.todoText { font-size:12.5px; color: var(--muted-strong); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1; min-width:0; }
+.todoRow.queued .todoText { color: var(--warn); font-weight:600; }
+.todoRow.done .todoCheck { background: var(--pos); border-color: var(--pos); color: var(--brand-ink); }
+.todoRow.done .todoText { color: var(--muted); font-weight:400; text-decoration: line-through; text-decoration-color: var(--border-strong); }
+.todoMore { font-family: var(--font-mono); font-size: 10px; color: var(--muted); padding-left: 22px; }
 .heroNum { font-family: var(--font-display); font-weight: 700; font-size: var(--text-3xl); letter-spacing: -0.03em; line-height: 1; margin-top:auto; font-variant-numeric: tabular-nums; }
 .heroUnit { font-size: 14px; color: var(--muted-strong); font-weight:600; }
 .deltaChip { display:inline-flex; align-self:flex-start; align-items:center; gap:4px; font-family: var(--font-mono); font-size: 11px; font-weight:600; padding: 3px 9px; border-radius: var(--radius-pill); }
@@ -344,7 +347,7 @@ const APPS = [
   { file: 'supplements.html', name: 'Supplements', tag: 'Your stack + smart recommendations',   icon: '💊' },
   { file: 'water.html',       name: 'Water',       tag: 'Daily hydration target',                icon: '💧' },
   { file: 'testing.html',     name: 'Testing & Monitoring', tag: 'VALD CMJ trend · full battery @ wk 1/4/8/12', icon: '🧪', wide: true },
-  { file: 'goals.html',       name: 'Goals',       tag: 'Goals & streaks',                       icon: '🎯' },
+  { file: 'goals.html',       name: 'To Do',       tag: "Today's list",                          icon: '📋' },
   { file: 'progress.html',    name: 'Progress',    tag: 'Photos & measurements',                 icon: '📈' },
   { file: 'macros.html',      name: 'Macros',      tag: 'Protein · carbs · fat',                 icon: '🍳' },
   { file: 'caffeine.html',    name: 'Caffeine',    tag: 'Dose timing · peak & crash predictor',  icon: '☕' },
@@ -772,26 +775,32 @@ function waterGlassHtml(){
       + '<div class="cardStat"><span class="cardStatValue">' + esc(todayL) + '</span><span class="cardStatLabel">of ' + esc(targetL) + ' today</span></div>';
   } catch (e) { return ''; }
 }
-// Today's to-do completion as a ring (goals:<activeDateKey> is a flat
-// {text, done}[], same 6am cutoff as goals.html's own getActiveDateString).
-// No streak — goals.html is a same-day to-do list with rollover, not a
-// habit tracker, so what's left today is the useful number, not a chain.
-function goalsRingHtml(){
+// Today's to-do list as a checklist preview (goals:<activeDateKey> is a flat
+// {text, done, queued}[], same 6am cutoff as goals.html's own
+// getActiveDateString). Items flagged with the ⚡ "queue" button in
+// goals.html surface first; the first 4 (queued or not) are shown, the rest
+// collapse into a "+N more" line. No streak — this is a same-day to-do
+// list with rollover, not a habit tracker.
+function todoChecklistHtml(){
   try {
     const list = lsGet('goals:' + activeDateKey());
-    const items = Array.isArray(list) ? list : [];
+    const items = Array.isArray(list) ? list.filter(Boolean) : [];
     if (!items.length) return '';
     const total = items.length;
-    const done = items.filter(g => g && g.done).length;
-    const left = total - done;
-    const pct = total > 0 ? done / total : 0;
-    const r = 25, circumference = 2 * Math.PI * r;
-    const offset = circumference * (1 - pct);
-    return '<div class="cardTop">'
-      + '<div class="ringWrap"><svg viewBox="0 0 60 60"><circle class="ringTrack" cx="30" cy="30" r="' + r + '" /><circle class="ringFill" cx="30" cy="30" r="' + r + '" stroke-dasharray="' + circumference.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '" /></svg><span class="ringNum">' + done + '/' + total + '</span></div>'
-      + '<div><span class="cardName">Goals</span><div class="cardTag">done today</div></div>'
-      + '</div>'
-      + '<div class="cardStat"><span class="cardStatValue">' + (left > 0 ? left : 'All') + '</span><span class="cardStatLabel">' + (left > 0 ? 'left today' : 'done today') + '</span></div>';
+    const done = items.filter(g => g.done).length;
+    const ordered = items.map((g, i) => ({ g, i })).sort((a, b) => {
+      const aq = a.g.queued ? 1 : 0, bq = b.g.queued ? 1 : 0;
+      return aq !== bq ? bq - aq : a.i - b.i;
+    }).map(x => x.g);
+    const visible = ordered.slice(0, 4);
+    const rows = visible.map(g => {
+      const cls = 'todoRow' + (g.done ? ' done' : '') + (g.queued ? ' queued' : '');
+      return '<div class="' + cls + '"><span class="todoCheck">' + (g.done ? '✓' : '') + '</span><span class="todoText">' + (g.queued ? '⚡ ' : '') + esc(g.text || '') + '</span></div>';
+    }).join('');
+    const more = total > 4 ? '<div class="todoMore">+' + (total - 4) + ' more</div>' : '';
+    return '<div class="cardTop"><span class="cardIcon" aria-hidden>📋</span><span class="cardName">To Do</span></div>'
+      + '<div class="todoList">' + rows + more + '</div>'
+      + '<div class="cardStat"><span class="cardStatValue">' + done + '/' + total + '</span><span class="cardStatLabel">done today</span></div>';
   } catch (e) { return ''; }
 }
 // Latest weigh-in as a hero number + this-week delta, matching progress.html's
@@ -849,11 +858,11 @@ function cardHtml(a){
     }
   }
   if (a.file === 'goals.html') {
-    const ring = goalsRingHtml();
-    if (ring) {
+    const checklist = todoChecklistHtml();
+    if (checklist) {
       return '<a class="card' + (a.wide ? ' tileWide' : '') + '" href="' + a.file + '">'
         + '<span class="cardArrow" aria-hidden>↗</span>'
-        + ring + '</a>';
+        + checklist + '</a>';
     }
   }
   if (a.file === 'progress.html') {
