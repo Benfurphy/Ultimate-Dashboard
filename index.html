@@ -41,6 +41,7 @@ img{max-width:100%;height:auto}
   --pos: #46E0A8; --pos-soft: rgba(70,224,168,0.12); --pos-line: rgba(70,224,168,0.26);
   --neg: #FB7185; --neg-soft: rgba(251,113,133,0.12); --neg-line: rgba(251,113,133,0.26);
   --warn: #FBBF24; --warn-soft: rgba(251,191,36,0.10); --warn-line: rgba(251,191,36,0.26);
+  --aqua: #4FC3F7; --aqua-soft: rgba(79,195,247,0.14); --aqua-line: rgba(79,195,247,0.32); --aqua-glow: rgba(79,195,247,0.45);
   --track: rgba(255,255,255,0.06);
   --card-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 18px 44px -30px rgba(0,0,0,0.85);
   --glow-1: rgba(139,124,255,0.12); --glow-2: rgba(70,224,168,0.05);
@@ -65,6 +66,7 @@ img{max-width:100%;height:auto}
   --pos: #4FE3D0; --pos-soft: rgba(79,227,208,0.13); --pos-line: rgba(79,227,208,0.28);
   --neg: #FF6FA5; --neg-soft: rgba(255,111,165,0.13); --neg-line: rgba(255,111,165,0.28);
   --warn: #FFC65C; --warn-soft: rgba(255,198,92,0.11); --warn-line: rgba(255,198,92,0.28);
+  --aqua: #5FD4F0; --aqua-soft: rgba(95,212,240,0.16); --aqua-line: rgba(95,212,240,0.34); --aqua-glow: rgba(95,212,240,0.5);
   --track: rgba(160,170,255,0.09);
   --card-shadow: 0 0 0 1px rgba(140,130,255,0.05) inset, 0 22px 56px -28px rgba(78,60,210,0.55);
   --glow-1: rgba(124,107,255,0.20); --glow-2: rgba(79,227,208,0.13);
@@ -81,6 +83,7 @@ img{max-width:100%;height:auto}
   --pos: #0E9E64; --pos-soft: rgba(14,158,100,0.10); --pos-line: rgba(14,158,100,0.26);
   --neg: #E11D63; --neg-soft: rgba(225,29,99,0.08); --neg-line: rgba(225,29,99,0.24);
   --warn: #B4690E; --warn-soft: rgba(180,105,14,0.10); --warn-line: rgba(180,105,14,0.24);
+  --aqua: #0E8FB4; --aqua-soft: rgba(14,143,180,0.10); --aqua-line: rgba(14,143,180,0.26); --aqua-glow: rgba(14,143,180,0.28);
   --track: rgba(23,22,60,0.08);
   --card-shadow: 0 1px 2px rgba(23,22,60,0.05), 0 16px 34px -24px rgba(23,22,60,0.24);
   --glow-1: rgba(106,69,255,0.07); --glow-2: rgba(14,158,100,0.04);
@@ -173,6 +176,18 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-ui), -ap
 .runPill.today { border-color: var(--brand-line); background: var(--brand-soft); }
 .runPill.today .dot { background: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); animation: splitPulse 2.2s var(--ease) infinite; }
 .runPill.today .lblName { color: var(--fg); }
+.chkList { display:flex; flex-direction:column; }
+.chkRow { display:flex; align-items:center; justify-content:space-between; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.chkRow:last-child { border-bottom: 0; }
+.chkLeft { font-size: 12.5px; color: var(--muted-strong); }
+.chkRow.done .chkLeft { color: var(--fg); }
+.chkCount { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.chkRow.done .chkCount { color: var(--pos); }
+.glassWrap { position:relative; width:40px; height:48px; flex-shrink:0; }
+.glassSvg { width:100%; height:100%; }
+.glassPct { position:absolute; inset:0; display:grid; place-items:center; padding-top:6px; font-family: var(--font-display); font-weight:700; font-size:10px; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+.card.cardAqua:hover { border-color: var(--aqua-line); background: var(--aqua-soft); box-shadow: 0 0 40px -18px var(--aqua-glow), var(--card-shadow); }
+.card.cardAqua:hover .cardArrow { color: var(--aqua); }
 
 /* Vitals tile */
 .vitals { grid-column: span 2; grid-row: span 2; display:flex; flex-direction:column; gap: var(--space-4); padding: var(--space-6); border: 1px solid var(--brand-line); border-radius: var(--radius-lg); background: var(--brand-soft); box-shadow: 0 0 50px -24px var(--brand-glow), var(--card-shadow); }
@@ -679,6 +694,56 @@ function runSplitHtml(){
       + '<div class="cardStat"><span class="cardStatValue">' + esc(statName) + '</span><span class="cardStatLabel">' + esc(statLabel) + '</span></div>';
   } catch (e) { return ''; }
 }
+// Per-window taken/total rows (morning/lunch/evening/anytime) instead of a
+// flat ratio — only windows that actually hold an item show up, so an
+// anytime-only stack doesn't render three empty rows.
+const SUPPLEMENT_WINDOWS = [
+  { key: 'morning', icon: '🌅', label: 'Morning' },
+  { key: 'lunch', icon: '🍽️', label: 'Lunch' },
+  { key: 'evening', icon: '🌙', label: 'Evening' },
+  { key: 'anytime', icon: '⏱️', label: 'Anytime' },
+];
+function supplementWindowHtml(){
+  try {
+    const s = lsGet('supplements_standalone_v1');
+    if (!s || !Array.isArray(s.items) || !s.items.length) return '';
+    const tk = (s.taken && s.taken[activeDateKey()]) || {};
+    const rows = SUPPLEMENT_WINDOWS.map(w => {
+      const items = s.items.filter(i => (i.window || 'anytime') === w.key);
+      if (!items.length) return null;
+      const takenN = items.filter(i => tk[i.id]).length;
+      const done = takenN === items.length;
+      return '<div class="chkRow' + (done ? ' done' : '') + '"><span class="chkLeft">' + w.icon + ' ' + esc(w.label) + '</span><span class="chkCount">' + takenN + '/' + items.length + '</span></div>';
+    }).filter(Boolean).join('');
+    if (!rows) return '';
+    const totalTaken = s.items.filter(i => tk[i.id]).length;
+    return '<div class="chkList" style="margin-top:auto">' + rows + '</div>'
+      + '<div class="cardStat"><span class="cardStatValue">' + totalTaken + '/' + s.items.length + '</span><span class="cardStatLabel">taken today</span></div>';
+  } catch (e) { return ''; }
+}
+// Wave-fill glass reading water.html's own water_ticker_cache_v1 (todayCount /
+// targetUnits / targetMl from its computeTarget()) — no need to duplicate
+// that formula here.
+function waterGlassHtml(){
+  try {
+    const c = lsGet('water_ticker_cache_v1');
+    if (!c || c.targetUnits == null) return '';
+    const pct = Math.max(0, Math.min(1, c.today / c.targetUnits));
+    const waveY = 4 + (1 - pct) * 46; // 4 = full, 50 = empty, inside the 0..56 viewBox
+    const todayMl = c.today * (c.unitMl || 0);
+    const targetL = (c.targetMl / 1000).toFixed(1) + 'L';
+    const todayL = (todayMl / 1000).toFixed(1) + 'L';
+    return '<div class="cardTop">'
+      + '<div class="glassWrap"><svg class="glassSvg" viewBox="0 0 46 56">'
+      + '<defs><clipPath id="waterGlassClip"><path d="M6 4 h34 l-4 46 a4 4 0 0 1 -4 4 h-18 a4 4 0 0 1 -4 -4 z"/></clipPath></defs>'
+      + '<path d="M6 4 h34 l-4 46 a4 4 0 0 1 -4 4 h-18 a4 4 0 0 1 -4 -4 z" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="2"/>'
+      + '<g clip-path="url(#waterGlassClip)"><path d="M-4 ' + waveY.toFixed(1) + ' Q 7.5 ' + (waveY - 5).toFixed(1) + ' 19 ' + waveY.toFixed(1) + ' T 42 ' + waveY.toFixed(1) + ' T 65 ' + waveY.toFixed(1) + ' V 60 H -4 Z" fill="var(--aqua)" opacity="0.9"/></g>'
+      + '</svg><span class="glassPct">' + Math.round(pct * 100) + '%</span></div>'
+      + '<div><span class="cardName">Water</span><div class="cardTag">daily hydration target</div></div>'
+      + '</div>'
+      + '<div class="cardStat"><span class="cardStatValue">' + esc(todayL) + '</span><span class="cardStatLabel">of ' + esc(targetL) + ' today</span></div>';
+  } catch (e) { return ''; }
+}
 function cardHtml(a){
   if (a.file === 'gym.html') {
     return '<a class="card' + (a.wide ? ' tileWide' : '') + '" href="' + a.file + '">'
@@ -691,6 +756,23 @@ function cardHtml(a){
       + '<span class="cardArrow" aria-hidden>↗</span>'
       + '<div class="cardTop"><span class="cardIcon" aria-hidden>' + a.icon + '</span><span class="cardName">' + esc(a.name) + '</span></div>'
       + runSplitHtml() + '</a>';
+  }
+  if (a.file === 'supplements.html') {
+    const rows = supplementWindowHtml();
+    if (rows) {
+      return '<a class="card' + (a.wide ? ' tileWide' : '') + '" href="' + a.file + '">'
+        + '<span class="cardArrow" aria-hidden>↗</span>'
+        + '<div class="cardTop"><span class="cardIcon" aria-hidden>' + a.icon + '</span><span class="cardName">' + esc(a.name) + '</span></div>'
+        + rows + '</a>';
+    }
+  }
+  if (a.file === 'water.html') {
+    const glass = waterGlassHtml();
+    if (glass) {
+      return '<a class="card cardAqua' + (a.wide ? ' tileWide' : '') + '" href="' + a.file + '">'
+        + '<span class="cardArrow" aria-hidden>↗</span>'
+        + glass + '</a>';
+    }
   }
   const st = statFor(a.file);
   const tail = st

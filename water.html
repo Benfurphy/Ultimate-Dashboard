@@ -289,6 +289,17 @@ const ui={whyOpen:false,settingsOpen:false,punch:false};
 /* Derived */
 function todayCount(){return state.logs[getLocalDateKey()]||0;}
 function targetUnits(){const t=computeTarget(state);return Math.max(1,Math.ceil(t.total/unitVolMl(state)));}
+// Small derived cache for the dashboard's own Water tile, same pattern as
+// fitness.html's fitness_ticker_cache_v1 — avoids duplicating computeTarget()
+// in index.html.
+function cacheTicker(){
+  try {
+    localStorage.setItem('water_ticker_cache_v1', JSON.stringify({
+      today: todayCount(), targetUnits: targetUnits(), targetMl: computeTarget(state).total,
+      unitMl: unitVolMl(state), unit: state.unit, ts: Date.now()
+    }));
+  } catch(e){}
+}
 
 /* Actions */
 const A={
@@ -413,7 +424,7 @@ function settingsHtml(){
     +'</div></div>';
 }
 
-function render(){document.getElementById('app').innerHTML=headerHtml()+heroHtml()+historyHtml();document.getElementById('modalRoot').innerHTML=settingsHtml();}
+function render(){cacheTicker();document.getElementById('app').innerHTML=headerHtml()+heroHtml()+historyHtml();document.getElementById('modalRoot').innerHTML=settingsHtml();}
 
 /* Tap punch + ripple */
 let punchT=null,rippleT=null;
