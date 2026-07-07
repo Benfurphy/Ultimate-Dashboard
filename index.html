@@ -186,6 +186,9 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-ui), -ap
 .glassWrap { position:relative; width:40px; height:48px; flex-shrink:0; }
 .glassSvg { width:100%; height:100%; }
 .glassPct { position:absolute; inset:0; display:grid; place-items:center; padding-top:6px; font-family: var(--font-display); font-weight:700; font-size:10px; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+.glassHero { flex:1; display:flex; align-items:center; justify-content:center; padding: var(--space-2) 0; }
+.glassWrapLg { width:76px; height:92px; }
+.glassPctLg { font-size: 16px; padding-top:12px; }
 .card.cardAqua:hover { border-color: var(--aqua-line); background: var(--aqua-soft); box-shadow: 0 0 40px -18px var(--aqua-glow), var(--card-shadow); }
 .card.cardAqua:hover .cardArrow { color: var(--aqua); }
 .ringWrap { position: relative; width: 60px; height: 60px; display:grid; place-items:center; flex-shrink:0; }
@@ -743,14 +746,13 @@ function waterGlassHtml(){
     const todayMl = c.today * (c.unitMl || 0);
     const targetL = (c.targetMl / 1000).toFixed(1) + 'L';
     const todayL = (todayMl / 1000).toFixed(1) + 'L';
-    return '<div class="cardTop">'
-      + '<div class="glassWrap"><svg class="glassSvg" viewBox="0 0 46 56">'
+    return '<div class="cardTop"><span class="cardIcon" aria-hidden>💧</span><span class="cardName">Water</span></div>'
+      + '<p class="cardTag">daily hydration target</p>'
+      + '<div class="glassHero"><div class="glassWrap glassWrapLg"><svg class="glassSvg" viewBox="0 0 46 56">'
       + '<defs><clipPath id="waterGlassClip"><path d="M6 4 h34 l-4 46 a4 4 0 0 1 -4 4 h-18 a4 4 0 0 1 -4 -4 z"/></clipPath></defs>'
       + '<path d="M6 4 h34 l-4 46 a4 4 0 0 1 -4 4 h-18 a4 4 0 0 1 -4 -4 z" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="2"/>'
       + '<g clip-path="url(#waterGlassClip)"><path d="M-4 ' + waveY.toFixed(1) + ' Q 7.5 ' + (waveY - 5).toFixed(1) + ' 19 ' + waveY.toFixed(1) + ' T 42 ' + waveY.toFixed(1) + ' T 65 ' + waveY.toFixed(1) + ' V 60 H -4 Z" fill="var(--aqua)" opacity="0.9"/></g>'
-      + '</svg><span class="glassPct">' + Math.round(pct * 100) + '%</span></div>'
-      + '<div><span class="cardName">Water</span><div class="cardTag">daily hydration target</div></div>'
-      + '</div>'
+      + '</svg><span class="glassPct glassPctLg">' + Math.round(pct * 100) + '%</span></div></div>'
       + '<div class="cardStat"><span class="cardStatValue">' + esc(todayL) + '</span><span class="cardStatLabel">of ' + esc(targetL) + ' today</span></div>';
   } catch (e) { return ''; }
 }
