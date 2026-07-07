@@ -188,6 +188,16 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-ui), -ap
 .glassPct { position:absolute; inset:0; display:grid; place-items:center; padding-top:6px; font-family: var(--font-display); font-weight:700; font-size:10px; color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
 .card.cardAqua:hover { border-color: var(--aqua-line); background: var(--aqua-soft); box-shadow: 0 0 40px -18px var(--aqua-glow), var(--card-shadow); }
 .card.cardAqua:hover .cardArrow { color: var(--aqua); }
+.ringWrap { position: relative; width: 60px; height: 60px; display:grid; place-items:center; flex-shrink:0; }
+.ringWrap svg { position:absolute; inset:0; transform: rotate(-90deg); }
+.ringTrack { fill:none; stroke: var(--track); stroke-width: 7; }
+.ringFill { fill:none; stroke: var(--warn); stroke-width: 7; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(251,191,36,0.5)); }
+.ringNum { font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: -0.02em; }
+.heroNum { font-family: var(--font-display); font-weight: 700; font-size: var(--text-3xl); letter-spacing: -0.03em; line-height: 1; margin-top:auto; font-variant-numeric: tabular-nums; }
+.heroUnit { font-size: 14px; color: var(--muted-strong); font-weight:600; }
+.deltaChip { display:inline-flex; align-self:flex-start; align-items:center; gap:4px; font-family: var(--font-mono); font-size: 11px; font-weight:600; padding: 3px 9px; border-radius: var(--radius-pill); }
+.deltaChip.down { color: var(--pos); background: var(--pos-soft); border:1px solid var(--pos-line); }
+.deltaChip.up { color: var(--neg); background: var(--neg-soft); border:1px solid var(--neg-line); }
 
 /* Vitals tile */
 .vitals { grid-column: span 2; grid-row: span 2; display:flex; flex-direction:column; gap: var(--space-4); padding: var(--space-6); border: 1px solid var(--brand-line); border-radius: var(--radius-lg); background: var(--brand-soft); box-shadow: 0 0 50px -24px var(--brand-glow), var(--card-shadow); }
@@ -744,6 +754,52 @@ function waterGlassHtml(){
       + '<div class="cardStat"><span class="cardStatValue">' + esc(todayL) + '</span><span class="cardStatLabel">of ' + esc(targetL) + ' today</span></div>';
   } catch (e) { return ''; }
 }
+// Today's goal completion as a ring (goals:<activeDateKey> is a flat
+// {text, done}[], same 6am cutoff as goals.html's own getActiveDateString)
+// plus the current streak from goal_streak_v1.
+function goalsRingHtml(){
+  try {
+    const list = lsGet('goals:' + activeDateKey());
+    const items = Array.isArray(list) ? list : [];
+    const streakObj = lsGet('goal_streak_v1');
+    const streakCount = (streakObj && typeof streakObj.count === 'number') ? streakObj.count : 0;
+    if (!items.length && !streakCount) return '';
+    const total = items.length;
+    const done = items.filter(g => g && g.done).length;
+    const pct = total > 0 ? done / total : 0;
+    const r = 25, circumference = 2 * Math.PI * r;
+    const offset = circumference * (1 - pct);
+    return '<div class="cardTop">'
+      + '<div class="ringWrap"><svg viewBox="0 0 60 60"><circle class="ringTrack" cx="30" cy="30" r="' + r + '" /><circle class="ringFill" cx="30" cy="30" r="' + r + '" stroke-dasharray="' + circumference.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '" /></svg><span class="ringNum">' + (total ? done + '/' + total : '—') + '</span></div>'
+      + '<div><span class="cardName">Goals</span><div class="cardTag">done today</div></div>'
+      + '</div>'
+      + '<div class="cardStat"><span class="cardStatValue">⚡ ' + streakCount + '</span><span class="cardStatLabel">day streak</span></div>';
+  } catch (e) { return ''; }
+}
+// Latest weigh-in as a hero number + this-week delta, matching progress.html's
+// own delta() (latest vs. the entry from ~7 days before it) and unit display.
+function progressWeightHeroHtml(){
+  try {
+    const s = lsGet('progress_standalone_v1');
+    if (!s || !Array.isArray(s.entries) || !s.entries.length) return '';
+    const sorted = s.entries.slice().sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+    const latestEntry = sorted[sorted.length - 1];
+    const unit = s.units === 'lb' ? 'lb' : 'kg';
+    const toDisp = kg => unit === 'lb' ? kg * 2.20462 : kg;
+    let deltaHtml = '';
+    if (sorted.length >= 2) {
+      const cutoff = new Date(latestEntry.dateKey + 'T00:00:00'); cutoff.setDate(cutoff.getDate() - 7);
+      const base = sorted.find(e => new Date(e.dateKey + 'T00:00:00') >= cutoff) || sorted[0];
+      const diff = latestEntry.weightKg - base.weightKg;
+      if (Math.abs(diff) >= 0.05) {
+        const dir = diff > 0 ? 'up' : 'down';
+        deltaHtml = '<span class="deltaChip ' + dir + '">' + (dir === 'down' ? '↓' : '↑') + ' ' + Math.abs(toDisp(diff)).toFixed(1) + unit + ' this week</span>';
+      }
+    }
+    return '<div class="heroNum">' + toDisp(latestEntry.weightKg).toFixed(1) + '<span class="heroUnit"> ' + unit + '</span></div>'
+      + (deltaHtml || '<p class="cardTag">Photos &amp; measurements</p>');
+  } catch (e) { return ''; }
+}
 function cardHtml(a){
   if (a.file === 'gym.html') {
     return '<a class="card' + (a.wide ? ' tileWide' : '') + '" href="' + a.file + '">'
@@ -772,6 +828,23 @@ function cardHtml(a){
       return '<a class="card cardAqua' + (a.wide ? ' tileWide' : '') + '" href="' + a.file + '">'
         + '<span class="cardArrow" aria-hidden>↗</span>'
         + glass + '</a>';
+    }
+  }
+  if (a.file === 'goals.html') {
+    const ring = goalsRingHtml();
+    if (ring) {
+      return '<a class="card' + (a.wide ? ' tileWide' : '') + '" href="' + a.file + '">'
+        + '<span class="cardArrow" aria-hidden>↗</span>'
+        + ring + '</a>';
+    }
+  }
+  if (a.file === 'progress.html') {
+    const hero = progressWeightHeroHtml();
+    if (hero) {
+      return '<a class="card' + (a.wide ? ' tileWide' : '') + '" href="' + a.file + '">'
+        + '<span class="cardArrow" aria-hidden>↗</span>'
+        + '<div class="cardTop"><span class="cardIcon" aria-hidden>' + a.icon + '</span><span class="cardName">' + esc(a.name) + '</span></div>'
+        + hero + '</a>';
     }
   }
   const st = statFor(a.file);
