@@ -635,6 +635,26 @@ body::after {
   background: var(--surface);
 }
 
+.gm-tt-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.gm-tt-status { font-size: 12px; color: var(--text-tertiary); }
+.gm-tt-btn {
+  display: inline-flex; align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font-size: 12px; font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.gm-tt-btn:hover { border-color: var(--line-3); background: var(--surface); }
+.gm-tt-btn-ghost { color: var(--text-tertiary); }
+
 .goal-input-wrap.gm-input-wrap {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
   margin-top: 14px;
@@ -786,7 +806,33 @@ body::after {
   <div class="section">
     <div class="section-title">To Do List</div>
 
-    <!-- TODAY -->
+    <div class="gm-tt-bar" id="gmTtBar">
+      <span class="gm-tt-status" id="ttStatus">Connect TickTick to sync your real tasks here.</span>
+      <a href="/api/ticktick?action=login" class="gm-tt-btn" id="ttConnectBtn">Connect TickTick</a>
+      <button type="button" class="gm-tt-btn gm-tt-btn-ghost" id="ttDisconnectBtn" style="display:none;">Disconnect</button>
+    </div>
+
+    <!-- TICKTICK (shown instead of the local list once connected) -->
+    <div class="gm-card" id="gmCardTickTick" style="display:none;">
+      <div class="gm-header">
+        <div class="gm-header-left">
+          <div class="gm-eyebrow">TickTick — open tasks</div>
+          <div class="gm-progress-row">
+            <span class="gm-progress-num" id="ttCount">0</span>
+            <span class="gm-progress-label">OPEN</span>
+          </div>
+        </div>
+      </div>
+      <ul id="ttList" class="goal-list gm-list"></ul>
+      <div id="ttEmpty" class="empty-state" style="display:none;">Nothing open in TickTick 🎉</div>
+      <div class="goal-input-wrap gm-input-wrap">
+        <input id="ttInput" class="gm-input" type="text" placeholder="Add a task to TickTick…" autocomplete="off">
+        <button type="button" id="ttAddBtn" class="gm-add">+ Add</button>
+        <div class="gm-status" id="ttAddStatus"></div>
+      </div>
+    </div>
+
+    <!-- TODAY (local, same-day rollover list — hidden once TickTick is connected) -->
     <div class="gm-card" id="gmCardToday">
       <div class="gm-header">
         <div class="gm-header-left">
@@ -1539,6 +1585,115 @@ body::after {
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) close(); });
   }
 
+  // ---------- TickTick sync ----------
+  // When connected, this section takes over from the local rollover list —
+  // same data source shown on the dashboard's To Do tile via TT_CACHE_KEY.
+  // Not connected (or opened as a local file, with no serverless functions
+  // running) just falls back to the local list below, untouched.
+  const TT_CACHE_KEY = 'todo_ticktick_cache_v1';
+  let ttState = { connected: false, tasks: [], total: 0, defaultProjectId: null };
+
+  function ttCacheWrite() {
+    try { localStorage.setItem(TT_CACHE_KEY, JSON.stringify({ connected: ttState.connected, tasks: ttState.tasks, total: ttState.total, ts: Date.now() })); } catch (e) {}
+  }
+  function ttSetUiConnected(connected) {
+    document.getElementById('gmCardTickTick').style.display = connected ? 'block' : 'none';
+    document.getElementById('gmCardToday').style.display = connected ? 'none' : 'block';
+    document.getElementById('gmCardTomorrow').style.display = connected ? 'none' : 'block';
+    document.getElementById('ttConnectBtn').style.display = connected ? 'none' : 'inline-flex';
+    document.getElementById('ttDisconnectBtn').style.display = connected ? 'inline-flex' : 'none';
+    document.getElementById('ttStatus').textContent = connected
+      ? 'Connected — showing your real TickTick tasks.'
+      : 'Connect TickTick to sync your real tasks here.';
+  }
+  function ttRenderList() {
+    const list = document.getElementById('ttList');
+    const empty = document.getElementById('ttEmpty');
+    list.innerHTML = '';
+    document.getElementById('ttCount').textContent = ttState.total;
+    if (!ttState.tasks.length) { empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    ttState.tasks.forEach(t => {
+      const li = document.createElement('li');
+      li.className = 'gm-row' + (t.priority > 0 ? ' gm-row-queued' : '');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'gm-check';
+      cb.addEventListener('change', () => {
+        cb.disabled = true;
+        fetch('/api/ticktick?action=complete', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ projectId: t.projectId, id: t.id }),
+        }).then(r => r.json()).then(j => {
+          if (j.ok) {
+            ttState.tasks = ttState.tasks.filter(x => x.id !== t.id);
+            ttState.total = Math.max(0, ttState.total - 1);
+            ttCacheWrite();
+            ttRenderList();
+          } else { cb.disabled = false; cb.checked = false; }
+        }).catch(() => { cb.disabled = false; cb.checked = false; });
+      });
+      li.appendChild(cb);
+      const text = document.createElement('span');
+      text.className = 'gm-text';
+      text.textContent = (t.priority > 0 ? '⚡ ' : '') + t.title;
+      li.appendChild(text);
+      list.appendChild(li);
+    });
+  }
+  async function ttRefresh() {
+    try {
+      const r = await fetch('/api/ticktick', { cache: 'no-store' });
+      const j = await r.json();
+      ttState.connected = !!j.connected;
+      ttState.tasks = Array.isArray(j.tasks) ? j.tasks : [];
+      ttState.total = j.total || 0;
+      ttState.defaultProjectId = j.defaultProjectId || null;
+      ttSetUiConnected(ttState.connected);
+      if (ttState.connected) ttRenderList();
+      ttCacheWrite();
+    } catch (e) {
+      ttSetUiConnected(false);
+    }
+  }
+  function initTickTick() {
+    document.getElementById('ttDisconnectBtn').addEventListener('click', () => {
+      fetch('/api/ticktick?action=logout').catch(() => {}).then(() => {
+        ttState = { connected: false, tasks: [], total: 0, defaultProjectId: null };
+        ttCacheWrite();
+        ttSetUiConnected(false);
+      });
+    });
+    document.getElementById('ttAddBtn').addEventListener('click', () => {
+      const input = document.getElementById('ttInput');
+      const title = input.value.trim();
+      if (!title) return;
+      const status = document.getElementById('ttAddStatus');
+      status.textContent = 'Adding…';
+      fetch('/api/ticktick?action=add', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ title, projectId: ttState.defaultProjectId }),
+      }).then(r => r.json()).then(j => {
+        status.textContent = '';
+        if (j.ok) { input.value = ''; ttRefresh(); }
+        else status.textContent = 'Couldn’t add — try again.';
+      }).catch(() => { status.textContent = 'Couldn’t add — try again.'; });
+    });
+    document.getElementById('ttInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('ttAddBtn').click();
+    });
+
+    // OAuth redirect lands back here with ?ticktick=connected|denied|error
+    const q = new URLSearchParams(location.search);
+    const tt = q.get('ticktick');
+    if (tt) {
+      history.replaceState(null, '', location.pathname);
+      if (tt === 'denied') alert('TickTick connection was cancelled.');
+      else if (tt === 'error') alert('TickTick connection didn’t complete. Check TICKTICK_CLIENT_ID/SECRET and the registered redirect URI (see TICKTICK_SETUP.md), then try again.');
+    }
+    ttRefresh();
+  }
+
   // ---------- Boot ----------
   rollover();
   loadToday();
@@ -1547,6 +1702,7 @@ body::after {
   updateDayRing();
   setInterval(updateDayRing, 60 * 1000);
   startTicker();
+  initTickTick();
 
   // Re-render when storage changes from another tab (or our bridged parent).
   window.addEventListener('storage', (e) => {

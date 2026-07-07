@@ -775,14 +775,32 @@ function waterGlassHtml(){
       + '<div class="cardStat"><span class="cardStatValue">' + esc(todayL) + '</span><span class="cardStatLabel">of ' + esc(targetL) + ' today</span></div>';
   } catch (e) { return ''; }
 }
-// Today's to-do list as a checklist preview (goals:<activeDateKey> is a flat
-// {text, done, queued}[], same 6am cutoff as goals.html's own
-// getActiveDateString). Items flagged with the ⚡ "queue" button in
-// goals.html surface first; the first 4 (queued or not) are shown, the rest
+// Today's to-do list as a checklist preview. If goals.html has TickTick
+// connected, todo_ticktick_cache_v1 (real, priority-sorted open tasks) wins;
+// otherwise falls back to the local goals:<activeDateKey> flat {text, done,
+// queued}[] (same 6am cutoff as goals.html's own getActiveDateString).
+// Either way: priority/queued items surface first, first 4 shown, the rest
 // collapse into a "+N more" line. No streak — this is a same-day to-do
 // list with rollover, not a habit tracker.
 function todoChecklistHtml(){
   try {
+    const tt = lsGet('todo_ticktick_cache_v1');
+    if (tt && tt.connected) {
+      const tasks = (Array.isArray(tt.tasks) ? tt.tasks : []).slice().sort((a, b) => (b.priority || 0) - (a.priority || 0));
+      const total = tt.total || tasks.length;
+      if (!total) {
+        return '<div class="cardTop"><span class="cardIcon" aria-hidden>📋</span><span class="cardName">To Do</span></div>'
+          + '<p class="cardTag">Nothing open in TickTick 🎉</p>';
+      }
+      const rows = tasks.slice(0, 4).map(t => {
+        const cls = 'todoRow' + (t.priority > 0 ? ' queued' : '');
+        return '<div class="' + cls + '"><span class="todoCheck"></span><span class="todoText">' + (t.priority > 0 ? '⚡ ' : '') + esc(t.title || '') + '</span></div>';
+      }).join('');
+      const more = total > 4 ? '<div class="todoMore">+' + (total - 4) + ' more</div>' : '';
+      return '<div class="cardTop"><span class="cardIcon" aria-hidden>📋</span><span class="cardName">To Do</span></div>'
+        + '<div class="todoList">' + rows + more + '</div>'
+        + '<div class="cardStat"><span class="cardStatValue">' + total + '</span><span class="cardStatLabel">open in TickTick</span></div>';
+    }
     const list = lsGet('goals:' + activeDateKey());
     const items = Array.isArray(list) ? list.filter(Boolean) : [];
     if (!items.length) return '';
