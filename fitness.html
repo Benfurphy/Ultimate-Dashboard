@@ -196,13 +196,18 @@ function dailyKmSeries(activities, days){
 function cacheTicker(){
   try {
     const buckets = bucketWeeks(garmin.activities, 1);
+    const weekBuckets = bucketWeeks(garmin.activities, 8);
     const paceSam = paceSamples(garmin.activities, state.targetHR, 8).slice(-8);
     const vo2Sam = garmin.activities.filter(a=>a.vo2max!=null).sort((a,b)=>a.ts-b.ts).slice(-8);
+    const vo2Latest = latestVo2(garmin.activities);
     localStorage.setItem('fitness_ticker_cache_v1', JSON.stringify({
       weekKm: buckets[0].km,
+      weekKmTrend: weekBuckets.map(b=>Math.round(b.km*10)/10).reverse(), // oldest -> newest, matches dailyKm's convention
       dailyKm: dailyKmSeries(garmin.activities, 7),
       paceTrend: paceSam.map(s=>Math.round(s.paceMinPerKm*100)/100),
       vo2Trend: vo2Sam.map(a=>a.vo2max),
+      vo2Latest: vo2Latest ? { value: vo2Latest.value, older: vo2Latest.older } : null,
+      targetHR: state.targetHR,
       ts: Date.now()
     }));
   } catch(e) {}
