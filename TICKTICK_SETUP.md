@@ -33,11 +33,18 @@ build.
 
 1. **Create a TickTick app** at <https://developer.ticktick.com> → *Manage Apps* → *App Registration*.
 2. Note the **Client ID** and **Client Secret**.
-3. Add a **Redirect URI** to the app, matching your deployment exactly (note this
-   is a query param on `/api/ticktick`, not its own path — that's the
-   consolidation from above):
-   - Production: `https://YOUR-APP.vercel.app/api/ticktick?action=callback`
-   - Local (`vercel dev`): `http://localhost:3000/api/ticktick?action=callback`
+3. Add a **Redirect URI** to the app, matching your deployment exactly:
+   - Production: `https://YOUR-APP.vercel.app/api/ticktick/callback`
+   - Local (`vercel dev`): `http://localhost:3000/api/ticktick/callback`
+
+   This looks like its own route, but a `vercel.json` rewrite maps it straight
+   to `/api/ticktick?action=callback` under the hood — still the one
+   consolidated function from above, just a clean URL with no query string to
+   register. (An earlier version of this doc had you register the
+   `?action=callback` URL directly; TickTick's app-registration form doesn't
+   reliably keep a query string on a saved redirect URI, so if you registered
+   that and got `error="invalid_grant"` / "does not match one of the
+   registered values," switch to the path above instead.)
 4. Scopes requested: `tasks:read tasks:write` (TickTick doesn't support finer-grained scopes).
 5. In **Vercel → Project → Settings → Environment Variables**, set:
    - `TICKTICK_CLIENT_ID`
@@ -51,7 +58,7 @@ build.
 | Request | Purpose |
 |---|---|
 | `GET /api/ticktick?action=login` | Redirects to TickTick's login/consent screen (with a CSRF `state`). |
-| `GET /api/ticktick?action=callback` | Exchanges the code for tokens. Stores a **refresh token** if TickTick returns one; otherwise falls back to storing the (long-lived, ~6 month) **access token** directly — TickTick's refresh-token support isn't consistently documented, so both paths are handled. |
+| `GET /api/ticktick/callback` (rewritten to `?action=callback`) | Exchanges the code for tokens. Stores a **refresh token** if TickTick returns one; otherwise falls back to storing the (long-lived, ~6 month) **access token** directly — TickTick's refresh-token support isn't consistently documented, so both paths are handled. |
 | `GET /api/ticktick` | Resolves a valid access token (refreshing if needed), lists every project, pulls each project's **open** tasks, and returns one flat list — priority-flagged tasks first. |
 | `POST /api/ticktick?action=complete` `{ projectId, id }` | Marks a task done in TickTick. |
 | `POST /api/ticktick?action=add` `{ title, projectId? }` | Creates a task (defaults to your first project if none given). |

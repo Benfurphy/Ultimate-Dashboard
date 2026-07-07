@@ -13,10 +13,15 @@ function getOrigin(req) {
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   return proto + '://' + host;
 }
-// Everything lives in one function file (index.js) to stay inside Vercel's
-// Hobby-plan 12-function cap — see the note at the top of index.js — so the
-// callback is a query param on the same path, not its own route.
-function redirectUri(req) { return getOrigin(req) + '/api/ticktick?action=callback'; }
+// Everything still lives in one function file (index.js), to stay inside
+// Vercel's Hobby-plan 12-function cap — see the note at the top of index.js.
+// The redirect URI itself is a clean path with no query string, though:
+// TickTick's app-registration form doesn't reliably accept (or silently
+// drops) a "?action=callback" suffix on a registered redirect URI. A
+// vercel.json rewrite maps this clean path back to /api/ticktick?action=callback
+// under the hood, so it's still one function — just a normal-looking URL
+// to register on TickTick's side.
+function redirectUri(req) { return getOrigin(req) + '/api/ticktick/callback'; }
 function isHttps(req) { return getOrigin(req).startsWith('https'); }
 
 function parseCookies(req) {
