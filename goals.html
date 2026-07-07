@@ -452,32 +452,6 @@ body::after {
 }
 .gm-card-tomorrow .gm-progress-row { display: none; }
 
-.gm-streak {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text-tertiary);
-  font-size: 11px; font-weight: 600;
-  letter-spacing: 0.10em; text-transform: uppercase;
-  transition: background 0.25s, color 0.25s, border-color 0.25s;
-}
-.gm-streak-icon { font-size: 13px; }
-.gm-streak-num {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.gm-streak.gm-streak-active {
-  background: rgba(var(--warning-rgb),0.10);
-  color: var(--warning);
-  border-color: rgba(var(--warning-rgb),0.32);
-}
-.gm-streak.gm-streak-active .gm-streak-icon {
-  filter: drop-shadow(0 0 6px rgba(var(--warning-rgb),0.6));
-}
-
 .gm-bar {
   display: flex; gap: 4px;
   height: 6px;
@@ -823,11 +797,6 @@ body::after {
             <span class="gm-progress-label" id="gmProgressLabel">no goals yet</span>
           </div>
         </div>
-        <div class="gm-streak" id="gmStreak">
-          <span class="gm-streak-icon">⚡</span>
-          <span class="gm-streak-num" id="gmStreakNum">0</span>
-          <span>day streak</span>
-        </div>
       </div>
       <div class="gm-bar" id="gmBar"></div>
       <ul id="goalList" class="goal-list gm-list"></ul>
@@ -995,32 +964,6 @@ body::after {
       storeDelete(k);
     });
     setGoals(todayK, today);
-  }
-
-  // ---------- streak ----------
-  function loadStreak() {
-    const s = storeGet('goal_streak_v1');
-    if (s && typeof s.count === 'number') return s;
-    return { count: 0, lastProcessedDate: '' };
-  }
-  function saveStreak(s) { storeSet('goal_streak_v1', s); }
-
-  function processStreak() {
-    const s = loadStreak();
-    const todayDateStr = getActiveDateString();
-    const keys = storeListKeys('goals:')
-      .map(k => k.slice('goals:'.length))
-      .filter(d => d < todayDateStr)
-      .sort();
-    keys.forEach(dateStr => {
-      if (s.lastProcessedDate && dateStr <= s.lastProcessedDate) return;
-      const list = getGoals('goals:' + dateStr);
-      if (list.length === 0) { /* don't break the streak on empty days */ }
-      else if (list.every(g => g.done)) s.count += 1;
-      else s.count = 0;
-      s.lastProcessedDate = dateStr;
-    });
-    saveStreak(s);
   }
 
   // ---------- Goal Ticker ----------
@@ -1387,12 +1330,6 @@ body::after {
     pushBtn.style.display = (total > 0 && done < total) ? 'block' : 'none';
   }
 
-  function renderStreak() {
-    const s = loadStreak();
-    document.getElementById('gmStreakNum').textContent = s.count;
-    document.getElementById('gmStreak').classList.toggle('gm-streak-active', s.count > 0);
-  }
-
   function renderTomorrowCount() {
     const list = getGoals(tomorrowKey());
     document.getElementById('gmTomorrowCount').textContent = list.length + ' planned';
@@ -1604,10 +1541,8 @@ body::after {
 
   // ---------- Boot ----------
   rollover();
-  processStreak();
   loadToday();
   loadTomorrow();
-  renderStreak();
   setupDayWindowPopover();
   updateDayRing();
   setInterval(updateDayRing, 60 * 1000);
@@ -1615,7 +1550,7 @@ body::after {
 
   // Re-render when storage changes from another tab (or our bridged parent).
   window.addEventListener('storage', (e) => {
-    loadToday(); loadTomorrow(); renderStreak();
+    loadToday(); loadTomorrow();
     // vitals updated elsewhere (dashboard / Whoop tab) → refresh the day window
     if (!e || !e.key || e.key === SUITE_HEALTH_KEY || e.key === LEGACY_WHOOP_KEY || e.key === DAY_WINDOW_KEY) updateDayRing();
   });

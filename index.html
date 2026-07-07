@@ -772,26 +772,26 @@ function waterGlassHtml(){
       + '<div class="cardStat"><span class="cardStatValue">' + esc(todayL) + '</span><span class="cardStatLabel">of ' + esc(targetL) + ' today</span></div>';
   } catch (e) { return ''; }
 }
-// Today's goal completion as a ring (goals:<activeDateKey> is a flat
-// {text, done}[], same 6am cutoff as goals.html's own getActiveDateString)
-// plus the current streak from goal_streak_v1.
+// Today's to-do completion as a ring (goals:<activeDateKey> is a flat
+// {text, done}[], same 6am cutoff as goals.html's own getActiveDateString).
+// No streak — goals.html is a same-day to-do list with rollover, not a
+// habit tracker, so what's left today is the useful number, not a chain.
 function goalsRingHtml(){
   try {
     const list = lsGet('goals:' + activeDateKey());
     const items = Array.isArray(list) ? list : [];
-    const streakObj = lsGet('goal_streak_v1');
-    const streakCount = (streakObj && typeof streakObj.count === 'number') ? streakObj.count : 0;
-    if (!items.length && !streakCount) return '';
+    if (!items.length) return '';
     const total = items.length;
     const done = items.filter(g => g && g.done).length;
+    const left = total - done;
     const pct = total > 0 ? done / total : 0;
     const r = 25, circumference = 2 * Math.PI * r;
     const offset = circumference * (1 - pct);
     return '<div class="cardTop">'
-      + '<div class="ringWrap"><svg viewBox="0 0 60 60"><circle class="ringTrack" cx="30" cy="30" r="' + r + '" /><circle class="ringFill" cx="30" cy="30" r="' + r + '" stroke-dasharray="' + circumference.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '" /></svg><span class="ringNum">' + (total ? done + '/' + total : '—') + '</span></div>'
+      + '<div class="ringWrap"><svg viewBox="0 0 60 60"><circle class="ringTrack" cx="30" cy="30" r="' + r + '" /><circle class="ringFill" cx="30" cy="30" r="' + r + '" stroke-dasharray="' + circumference.toFixed(1) + '" stroke-dashoffset="' + offset.toFixed(1) + '" /></svg><span class="ringNum">' + done + '/' + total + '</span></div>'
       + '<div><span class="cardName">Goals</span><div class="cardTag">done today</div></div>'
       + '</div>'
-      + '<div class="cardStat"><span class="cardStatValue">⚡ ' + streakCount + '</span><span class="cardStatLabel">day streak</span></div>';
+      + '<div class="cardStat"><span class="cardStatValue">' + (left > 0 ? left : 'All') + '</span><span class="cardStatLabel">' + (left > 0 ? 'left today' : 'done today') + '</span></div>';
   } catch (e) { return ''; }
 }
 // Latest weigh-in as a hero number + this-week delta, matching progress.html's
