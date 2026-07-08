@@ -181,7 +181,7 @@ function load(){
 }
 function save(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
 let state = load();
-const ui = { type:'interval', distance:'', time:'', notes:'', date: localDateKey() };
+const ui = { type:'interval', distance:'', time:'', pace:'', intervals:'', notes:'', date: localDateKey() };
 
 const TYPE_LABEL = { interval:'Wed Interval/Tempo', long:'Long Run', extra:'Extra' };
 
@@ -285,21 +285,18 @@ function runWeekNumber(run){
 }
 
 function logFormHtml(){
-  const paceLbl = (function(){
-    const d = Number(ui.distance), t = parseTimeStr(ui.time);
-    if (!d || !t) return '';
-    return '<span class="rowMeta">pace ' + fmtPace((t/60)/d) + '</span>';
-  })();
   return '<section class="card"><span class="cardName">Log a run</span>'
     + '<form class="logForm" id="logForm" style="margin-top:var(--space-4)">'
     + '<div class="logField"><label for="f-date">Date</label><input id="f-date" class="fieldInput" type="date" value="' + esc(ui.date) + '"></div>'
     + '<div class="logField"><label for="f-type">Type</label><select id="f-type" class="fieldInput">'
     +   Object.keys(TYPE_LABEL).map(k => '<option value="' + k + '"' + (k===ui.type?' selected':'') + '>' + TYPE_LABEL[k] + '</option>').join('')
     + '</select></div>'
-    + '<div class="logField"><label for="f-dist">Distance (km)</label><input id="f-dist" class="fieldInput" type="number" step="0.1" min="0" placeholder="10" value="' + esc(ui.distance) + '"></div>'
-    + '<div class="logField"><label for="f-time">Time (mm:ss)</label><input id="f-time" class="fieldInput" type="text" placeholder="52:30" value="' + esc(ui.time) + '"></div>'
+    + '<div class="logField"><label for="f-dist">Distance (km, optional)</label><input id="f-dist" class="fieldInput" type="number" step="0.1" min="0" placeholder="10" value="' + esc(ui.distance) + '"></div>'
+    + '<div class="logField"><label for="f-time">Time (mm:ss, optional)</label><input id="f-time" class="fieldInput" type="text" placeholder="52:30" value="' + esc(ui.time) + '"></div>'
+    + '<div class="logField"><label for="f-pace">Pace (min/km, optional)</label><input id="f-pace" class="fieldInput" type="text" placeholder="4:50" value="' + esc(ui.pace) + '"></div>'
+    + '<div class="logField logNotes"><label for="f-intervals">Intervals (optional)</label><input id="f-intervals" class="fieldInput" type="text" placeholder="6×2min hard / 2min jog" value="' + esc(ui.intervals) + '"></div>'
     + '<div class="logField logNotes"><label for="f-notes">Notes (optional)</label><input id="f-notes" class="fieldInput" type="text" placeholder="felt good, shoulder fine" value="' + esc(ui.notes) + '"></div>'
-    + '<div class="logSubmitRow"><button type="submit" class="btn btn-primary">Log run</button>' + paceLbl + '</div>'
+    + '<div class="logSubmitRow"><button type="submit" class="btn btn-primary">Log run</button></div>'
     + '</form></section>';
 }
 
@@ -307,10 +304,19 @@ function runsListHtml(){
   const runs = state.runs.slice().sort((a,b)=> b.dateKey.localeCompare(a.dateKey) || (b.ts||0)-(a.ts||0));
   if (!runs.length) return '<section class="card"><span class="cardName">Recent runs</span><p class="rowEmpty">Nothing logged yet — add your first run above.</p></section>';
   const rows = runs.map((r,i) => {
-    const pace = r.distanceKm && r.timeSec ? fmtPace((r.timeSec/60)/r.distanceKm) : null;
+    // Prefer a typed pace (interval sessions with no clean distance/time) over
+    // one derived from distance+time.
+    const pace = r.paceMinPerKm ? fmtPace(r.paceMinPerKm) : (r.distanceKm && r.timeSec ? fmtPace((r.timeSec/60)/r.distanceKm) : null);
+    const meta = [
+      r.distanceKm ? r.distanceKm + 'km' : null,
+      r.timeSec ? fmtTimeStr(r.timeSec) : null,
+      pace,
+      r.intervals ? esc(r.intervals) : null,
+      r.notes ? esc(r.notes) : null,
+    ].filter(Boolean).join(' · ');
     return '<div class="rowItem"><div class="rowMain">'
       + '<span class="rowName"><span class="typeTag' + (r.type==='long'?' long':r.type==='extra'?' extra':'') + '">' + TYPE_LABEL[r.type] + '</span> ' + fmtDateKey(r.dateKey) + '</span>'
-      + '<span class="rowMeta">' + r.distanceKm + 'km' + (r.timeSec ? ' · ' + fmtTimeStr(r.timeSec) : '') + (pace ? ' · ' + pace : '') + (r.notes ? ' · ' + esc(r.notes) : '') + '</span>'
+      + '<span class="rowMeta">' + (meta || 'no details logged') + '</span>'
       + '</div><div class="rowRight">'
       + '<button class="rowDel" data-del="' + r.id + '" aria-label="Remove">×</button>'
       + '</div></div>';
@@ -327,36 +333,33 @@ function render(){
  * ============================================================ */
 document.addEventListener('input', e => {
   if (e.target.id === 'f-date') ui.date = e.target.value;
-  else if (e.target.id === 'f-dist') { ui.distance = e.target.value; refreshPaceOnly(); }
-  else if (e.target.id === 'f-time') { ui.time = e.target.value; refreshPaceOnly(); }
+  else if (e.target.id === 'f-dist') ui.distance = e.target.value;
+  else if (e.target.id === 'f-time') ui.time = e.target.value;
+  else if (e.target.id === 'f-pace') ui.pace = e.target.value;
+  else if (e.target.id === 'f-intervals') ui.intervals = e.target.value;
   else if (e.target.id === 'f-notes') ui.notes = e.target.value;
 });
 document.addEventListener('change', e => {
   if (e.target.id === 'f-type') ui.type = e.target.value;
 });
-function refreshPaceOnly(){
-  // Re-render just the submit row's pace hint without losing input focus.
-  const row = document.querySelector('.logSubmitRow');
-  if (!row) return;
-  const d = Number(ui.distance), t = parseTimeStr(ui.time);
-  const existing = row.querySelector('.rowMeta');
-  if (existing) existing.remove();
-  if (d && t) row.insertAdjacentHTML('beforeend', '<span class="rowMeta">pace ' + fmtPace((t/60)/d) + '</span>');
-}
 document.addEventListener('submit', e => {
   if (e.target.id !== 'logForm') return;
   e.preventDefault();
   const dist = Number(ui.distance);
   const timeSec = parseTimeStr(ui.time);
+  const paceSec = parseTimeStr(ui.pace);
   if (!ui.date) { alert('Pick a date.'); return; }
-  if (!isFinite(dist) || dist <= 0) { alert('Enter a valid distance.'); return; }
   state.runs.push({
     id: Date.now() + '-' + Math.round(Math.random()*1e5),
-    dateKey: ui.date, type: ui.type, distanceKm: dist,
-    timeSec: timeSec || null, notes: ui.notes.trim(), ts: Date.now()
+    dateKey: ui.date, type: ui.type,
+    distanceKm: (isFinite(dist) && dist > 0) ? dist : null,
+    timeSec: timeSec || null,
+    paceMinPerKm: paceSec ? paceSec / 60 : null,
+    intervals: ui.intervals.trim(),
+    notes: ui.notes.trim(), ts: Date.now()
   });
   save();
-  ui.distance = ''; ui.time = ''; ui.notes = ''; ui.date = localDateKey();
+  ui.distance = ''; ui.time = ''; ui.pace = ''; ui.intervals = ''; ui.notes = ''; ui.date = localDateKey();
   render();
 });
 document.addEventListener('click', e => {
