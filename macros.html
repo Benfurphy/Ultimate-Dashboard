@@ -71,6 +71,21 @@
   .xBtn { background:transparent; border:1px solid var(--border); color:var(--muted); width:26px; height:26px; border-radius:50%; cursor:pointer; flex-shrink:0; }
   .xBtn:hover { color: var(--neg); border-color: var(--neg-line); }
   .sectionTitle { font-family: var(--font-display); font-weight:600; font-size: var(--text-lg); margin: var(--space-8) 0 0; }
+
+  .mealPicker { display:inline-flex; gap:4px; padding:4px; border:1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); margin-top: var(--space-3); }
+  .mealPickBtn { border:0; background:transparent; color: var(--muted); font-family: var(--font-ui); font-size:12px; font-weight:600; padding:6px 13px; border-radius: var(--radius-pill); cursor:pointer; }
+  .mealPickBtn.active { background: var(--brand); color: var(--brand-ink); }
+
+  .manualToggle { margin-top: var(--space-3); }
+  .manualForm { margin-top: var(--space-3); padding: var(--space-4); border:1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+  .manualGrid { display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: var(--space-3); }
+  @media (max-width: 560px) { .manualGrid { grid-template-columns: 1fr 1fr; } }
+  .manualSubmitRow { display:flex; align-items:center; gap: var(--space-3); margin-top: var(--space-4); flex-wrap:wrap; }
+  .manualSubmitRow .meta { font-family: var(--font-mono); font-size:12px; color: var(--muted-strong); margin-right:auto; }
+
+  .mealGroup { margin-top: var(--space-4); }
+  .mealGroupHead { display:flex; align-items:baseline; justify-content:space-between; margin-bottom: var(--space-2); }
+  .mealGroupTitle { font-family: var(--font-mono); font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -134,6 +149,23 @@ function round(n){ return Math.round(n); }
 
 let query = '';
 let matches = [];
+
+/* ---- meal categories ---- */
+const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snacks'];
+const MEAL_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snacks: 'Snacks' };
+function defaultMealForNow(){
+  const h = new Date().getHours();
+  if (h < 11) return 'breakfast';
+  if (h < 15) return 'lunch';
+  if (h < 21) return 'dinner';
+  return 'snacks';
+}
+let selectedMeal = defaultMealForNow(); // which meal the next add (search or manual) logs to
+
+/* ---- manual add ---- */
+let manualOpen = false;
+let manualName = '', manualP = '', manualC = '', manualF = '';
+function resetManualForm(){ manualOpen = false; manualName = ''; manualP = ''; manualC = ''; manualF = ''; }
 
 /* ---- calculations ---- */
 function totals(){
@@ -205,20 +237,54 @@ function resultsInner(){
     + '<button class="btn btn-primary" data-add="' + i + '">Add</button></div></div>').join('');
 }
 
+function mealPickerHtml(){
+  return '<div class="mealPicker">' + MEAL_ORDER.map(m =>
+    '<button type="button" class="mealPickBtn' + (selectedMeal === m ? ' active' : '') + '" data-meal="' + m + '">' + MEAL_LABELS[m] + '</button>'
+  ).join('') + '</div>';
+}
+function manualAddHtml(){
+  if (!manualOpen) return '<div class="manualToggle"><button type="button" class="btn btn-ghost" id="manualToggleBtn">+ Add food manually</button></div>';
+  const p = Number(manualP) || 0, c = Number(manualC) || 0, f = Number(manualF) || 0;
+  const cal = p*4 + c*4 + f*9;
+  return '<div class="manualForm">'
+    + '<div class="manualGrid">'
+    + '<div class="goalField"><label for="m-name">Name</label><input class="fieldInput" id="m-name" type="text" placeholder="Homemade chili" value="' + esc(manualName) + '" autocomplete="off"></div>'
+    + '<div class="goalField"><label for="m-p">Protein (g)</label><input class="fieldInput" id="m-p" type="number" min="0" step="0.1" value="' + esc(manualP) + '"></div>'
+    + '<div class="goalField"><label for="m-c">Carbs (g)</label><input class="fieldInput" id="m-c" type="number" min="0" step="0.1" value="' + esc(manualC) + '"></div>'
+    + '<div class="goalField"><label for="m-f">Fat (g)</label><input class="fieldInput" id="m-f" type="number" min="0" step="0.1" value="' + esc(manualF) + '"></div>'
+    + '</div>'
+    + '<div class="manualSubmitRow"><span class="meta">= ' + round(cal) + ' kcal</span>'
+    + '<button type="button" class="btn btn-primary" id="manualAddBtn">Add to ' + MEAL_LABELS[selectedMeal] + '</button>'
+    + '<button type="button" class="btn btn-ghost" id="manualCancelBtn">Cancel</button></div>'
+    + '</div>';
+}
 function searchHtml(){
   return '<h2 class="sectionTitle">Add food</h2>'
+    + mealPickerHtml()
     + '<div class="search"><input class="fieldInput" id="q" type="text" placeholder="Search foods (e.g. chicken, rice, banana)" value="' + esc(query) + '" autocomplete="off" /></div>'
-    + '<div class="results" id="results">' + resultsInner() + '</div>';
+    + '<div class="results" id="results">' + resultsInner() + '</div>'
+    + manualAddHtml();
 }
 
 function logHtml(){
   const log = todaysLog();
   if (!log.length) return '<h2 class="sectionTitle">Logged today</h2><p class="empty">Nothing logged yet.</p>';
-  const rows = log.map((e, i) =>
-    '<div class="logRow"><div><div class="foodName">' + esc(e.name) + ' <span class="meta">' + e.grams + 'g</span></div>'
-    + '<div class="nums">' + round(e.cal) + ' kcal · ' + round(e.p) + 'P / ' + round(e.c) + 'C / ' + round(e.f) + 'F</div></div>'
-    + '<button class="xBtn" data-del="' + i + '" title="Remove">×</button></div>').join('');
-  return '<h2 class="sectionTitle">Logged today</h2><div class="logList">' + rows + '</div>';
+  const groups = MEAL_ORDER.map(m => ({
+    key: m,
+    label: MEAL_LABELS[m],
+    entries: log.map((e, i) => Object.assign({ i: i }, e)).filter(e => (e.meal || 'snacks') === m),
+  })).filter(g => g.entries.length);
+  const sections = groups.map(g => {
+    const subCal = g.entries.reduce((a, e) => a + e.cal, 0);
+    const rows = g.entries.map(e =>
+      '<div class="logRow"><div><div class="foodName">' + esc(e.name) + (e.grams ? ' <span class="meta">' + e.grams + 'g</span>' : '') + '</div>'
+      + '<div class="nums">' + round(e.cal) + ' kcal · ' + round(e.p) + 'P / ' + round(e.c) + 'C / ' + round(e.f) + 'F</div></div>'
+      + '<button class="xBtn" data-del="' + e.i + '" title="Remove">×</button></div>'
+    ).join('');
+    return '<div class="mealGroup"><div class="mealGroupHead"><span class="mealGroupTitle">' + g.label + '</span><span class="meta">' + round(subCal) + ' kcal</span></div>'
+      + '<div class="logList">' + rows + '</div></div>';
+  }).join('');
+  return '<h2 class="sectionTitle">Logged today</h2>' + sections;
 }
 
 function headerHtml(){
@@ -249,6 +315,15 @@ document.addEventListener('input', e => {
     el.focus();
     try { el.setSelectionRange(sel, sel); } catch (err) {}
   }
+  const MANUAL_FIELDS = { 'm-name': v => manualName = v, 'm-p': v => manualP = v, 'm-c': v => manualC = v, 'm-f': v => manualF = v };
+  if (MANUAL_FIELDS[e.target.id]) {
+    MANUAL_FIELDS[e.target.id](e.target.value);
+    const sel = e.target.selectionStart;
+    render(); // refresh the "= X kcal" live total
+    const el = document.getElementById(e.target.id);
+    el.focus();
+    try { el.setSelectionRange(sel, sel); } catch (err) {}
+  }
 });
 
 document.addEventListener('click', e => {
@@ -265,7 +340,7 @@ document.addEventListener('click', e => {
     if (!f || !isFinite(grams) || grams <= 0) { alert('Enter how many grams.'); return; }
     const k = grams / 100;
     const log = todaysLog();
-    log.push({ name: f.name, grams, cal: f.cal*k, p: f.p*k, c: f.c*k, f: f.f*k });
+    log.push({ name: f.name, grams, cal: f.cal*k, p: f.p*k, c: f.c*k, f: f.f*k, meal: selectedMeal });
     setTodaysLog(log);
     query = '';
     render();
@@ -276,6 +351,37 @@ document.addEventListener('click', e => {
     const log = todaysLog();
     log.splice(Number(del.getAttribute('data-del')), 1);
     setTodaysLog(log);
+    render();
+    return;
+  }
+  const mealBtn = e.target.closest('[data-meal]');
+  if (mealBtn) {
+    selectedMeal = mealBtn.getAttribute('data-meal');
+    render();
+    return;
+  }
+  if (e.target.id === 'manualToggleBtn') {
+    manualOpen = true;
+    render();
+    const el = document.getElementById('m-name');
+    if (el) el.focus();
+    return;
+  }
+  if (e.target.id === 'manualCancelBtn') {
+    resetManualForm();
+    render();
+    return;
+  }
+  if (e.target.id === 'manualAddBtn') {
+    const name = manualName.trim();
+    const p = Number(manualP) || 0, c = Number(manualC) || 0, f = Number(manualF) || 0;
+    if (!name) { alert('Enter a food name.'); return; }
+    if (!p && !c && !f) { alert('Enter at least one of protein, carbs, or fat.'); return; }
+    const cal = p*4 + c*4 + f*9;
+    const log = todaysLog();
+    log.push({ name, cal, p, c, f, meal: selectedMeal });
+    setTodaysLog(log);
+    resetManualForm();
     render();
     return;
   }
