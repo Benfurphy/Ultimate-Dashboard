@@ -21,7 +21,21 @@ function getOrigin(req) {
 // vercel.json rewrite maps this clean path back to /api/ticktick?action=callback
 // under the hood, so it's still one function — just a normal-looking URL
 // to register on TickTick's side.
-function redirectUri(req) { return getOrigin(req) + '/api/ticktick/callback'; }
+//
+// The origin itself is NOT derived from the incoming request by default.
+// Every Vercel deployment gets its own unique preview URL
+// (my-app-<hash>-<team>.vercel.app) in addition to the stable production
+// domain — if you click through from a preview URL, the dynamically-built
+// redirect_uri won't match whatever's registered with TickTick (that's
+// exactly what happened: registered for ultimate-dashboard-black.vercel.app,
+// but visited via ultimate-dashboard-dpe0dshqn-ben-furphy.vercel.app).
+// Set TICKTICK_BASE_URL to your stable domain to pin this regardless of
+// which URL you're browsing from; falls back to the request's own host
+// (fine for local `vercel dev`) if unset.
+function redirectUri(req) {
+  const base = String(process.env.TICKTICK_BASE_URL || '').trim().replace(/\/+$/, '');
+  return (base || getOrigin(req)) + '/api/ticktick/callback';
+}
 function isHttps(req) { return getOrigin(req).startsWith('https'); }
 
 function parseCookies(req) {

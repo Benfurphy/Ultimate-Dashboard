@@ -49,9 +49,19 @@ build.
 5. In **Vercel → Project → Settings → Environment Variables**, set:
    - `TICKTICK_CLIENT_ID`
    - `TICKTICK_CLIENT_SECRET`
+   - `TICKTICK_BASE_URL` = `https://YOUR-APP.vercel.app` (your **stable** production
+     domain, no trailing slash) — **important:** every Vercel deployment also gets
+     its own unique preview URL (`your-app-<hash>-<team>.vercel.app`). Without this
+     var, the redirect URI is built from whatever host you're currently browsing
+     on, so clicking Connect from a preview URL sends a redirect_uri TickTick
+     doesn't recognize, even though the code and the registered URI both look
+     "right." Setting this pins it to the one domain you registered with TickTick,
+     regardless of which URL you're actually on.
 
-   (For local dev, put the same two lines in `.env`.)
-6. Redeploy. Open **To Do** (`goals.html`) → **Connect TickTick**.
+   (For local dev, put the same three lines in `.env`; `TICKTICK_BASE_URL` can be
+   omitted there — it falls back to `localhost`.)
+6. Redeploy. Open **To Do** (`goals.html`) — from your stable production
+   domain, not a preview URL — → **Connect TickTick**.
 
 ## How it works
 
