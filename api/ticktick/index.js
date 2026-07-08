@@ -103,7 +103,10 @@ async function handleData(req, res) {
 
   try {
     const projects = await L.api('/project', token);
-    const lists = Array.isArray(projects) ? projects : [];
+    // GET /project only lists custom lists — Inbox is a separate, special
+    // "project" that has to be fetched by the literal id "inbox" and never
+    // shows up here, even though it's where most quick-added tasks live.
+    const lists = [{ id: 'inbox', name: 'Inbox' }].concat(Array.isArray(projects) ? projects : []);
     const perProject = await Promise.all(lists.map(p => L.api('/project/' + encodeURIComponent(p.id) + '/data', token).catch(() => null)));
     const tasks = [];
     perProject.forEach((data, i) => {
@@ -115,7 +118,7 @@ async function handleData(req, res) {
       });
     });
     tasks.sort((a, b) => (b.priority - a.priority));
-    res.end(JSON.stringify({ connected: true, source: 'ticktick', ts: Date.now(), total: tasks.length, tasks: tasks.slice(0, 40), defaultProjectId: lists[0] ? lists[0].id : null }));
+    res.end(JSON.stringify({ connected: true, source: 'ticktick', ts: Date.now(), total: tasks.length, tasks: tasks.slice(0, 40), defaultProjectId: 'inbox' }));
   } catch (e) {
     res.end(JSON.stringify({ connected: true, source: 'ticktick', ts: Date.now(), total: 0, tasks: [], error: 'fetch_failed' }));
   }
@@ -145,12 +148,9 @@ async function handleAdd(req, res) {
   try { ({ token } = await L.resolveToken(req)); } catch (e) { token = null; }
   if (!token) { res.statusCode = 200; res.end(JSON.stringify({ ok: false, error: 'not_connected' })); return; }
   try {
-    let projectId = body.projectId;
-    if (!projectId) {
-      const projects = await L.api('/project', token);
-      projectId = Array.isArray(projects) && projects[0] ? projects[0].id : null;
-    }
-    if (!projectId) { res.statusCode = 200; res.end(JSON.stringify({ ok: false, error: 'no_project' })); return; }
+    // Default to Inbox, same as TickTick's own quick-add — not an arbitrary
+    // "first custom list," which is wrong for accounts with no custom lists.
+    const projectId = body.projectId || 'inbox';
     const created = await L.api('/task', token, { method: 'POST', body: { title, projectId } });
     res.statusCode = 200; res.end(JSON.stringify({ ok: true, task: created }));
   } catch (e) {
