@@ -74,6 +74,7 @@
   .readinessActions { display:flex; align-items:center; gap:var(--space-3); margin-top:var(--space-3); }
   .readinessApplied { font-size:13px; font-weight:600; color:var(--pos); }
   .planDay.wasPlan { color:var(--muted); font-family:var(--font-mono); }
+  .garminImportCard { border-color: var(--pos-line); }
 </style>
 </head>
 <body>
@@ -170,12 +171,13 @@ function programWeekInfo(d){
  * Persisted state — manually logged runs.
  * ============================================================ */
 const LS = 'running_standalone_v1';
-function seed(){ return { version:1, runs:[] }; }
+function seed(){ return { version:1, runs:[], garminHandled:[] }; }
 function load(){
   try {
     const r = localStorage.getItem(LS);
     const s = r ? Object.assign(seed(), JSON.parse(r)) : seed();
     if (!Array.isArray(s.runs)) s.runs = [];
+    if (!Array.isArray(s.garminHandled)) s.garminHandled = [];
     return s;
   } catch(e){ return seed(); }
 }
@@ -224,6 +226,49 @@ function saveReadinessOverride(o){
 function todaysReadinessOverride(){
   const o = loadReadinessOverride();
   return (o && o.date === localDateKey()) ? o : null;
+}
+
+/* ============================================================
+ * Garmin import — same-origin /api/garmin?action=activities (the Fitness
+ * tab's own endpoint). Offers to pre-fill today's log from a matching
+ * Garmin activity rather than typing distance/time/pace by hand; Intervals
+ * and Notes stay yours since Garmin has no idea about either. Matched by
+ * calendar date, not by guessing which planned session it is — the fixed
+ * weekly split (Wed = interval, weekend = long) already tells us that.
+ * Silently does nothing if not deployed on Vercel or Garmin isn't connected.
+ * ============================================================ */
+let garminActivity = null; // the one unhandled activity from today, if any
+async function fetchGarminImportCandidate(){
+  try {
+    const r = await fetch('/api/garmin?action=activities', { cache: 'no-store' });
+    const j = await r.json();
+    if (!j || !j.connected || !Array.isArray(j.activities)) return;
+    const todayKey = localDateKey();
+    const match = j.activities.find(a => a && a.id != null
+      && localDateKey(new Date(a.ts)) === todayKey
+      && state.garminHandled.indexOf(String(a.id)) === -1);
+    if (match) { garminActivity = match; render(); }
+  } catch (e) { /* not deployed on Vercel, or Garmin not connected — no-op */ }
+}
+function markGarminHandled(id){
+  state.garminHandled.push(String(id));
+  if (state.garminHandled.length > 200) state.garminHandled = state.garminHandled.slice(-200);
+  save();
+}
+function garminImportCardHtml(){
+  if (!garminActivity) return '';
+  const a = garminActivity;
+  const bits = [
+    a.distanceKm ? a.distanceKm.toFixed(1) + 'km' : null,
+    a.durationSec ? fmtTimeStr(a.durationSec) : null,
+    a.paceMinPerKm ? fmtPace(a.paceMinPerKm) : null,
+  ].filter(Boolean).join(' · ');
+  return '<section class="card garminImportCard">'
+    + '<span class="cardName">Garmin found a run today</span>'
+    + '<p class="cardTag" style="margin-top:var(--space-2)">' + esc(bits || a.name || 'Run') + '</p>'
+    + '<div class="readinessActions"><button type="button" class="btn btn-primary" data-action="garmin-import">Import</button>'
+    + '<button type="button" class="btn btn-secondary" data-action="garmin-dismiss">Dismiss</button></div>'
+    + '</section>';
 }
 function readinessBannerHtml(){
   const session = todaySessionType();
@@ -325,7 +370,7 @@ function runsListHtml(){
 }
 
 function render(){
-  document.getElementById('app').innerHTML = readinessBannerHtml() + weekHeroHtml() + logFormHtml() + runsListHtml();
+  document.getElementById('app').innerHTML = garminImportCardHtml() + readinessBannerHtml() + weekHeroHtml() + logFormHtml() + runsListHtml();
 }
 
 /* ============================================================
@@ -380,11 +425,34 @@ document.addEventListener('click', e => {
   if (undoBtn) {
     saveReadinessOverride(null);
     render();
+    return;
+  }
+  const importBtn = e.target.closest('[data-action="garmin-import"]');
+  if (importBtn && garminActivity) {
+    const a = garminActivity;
+    state.runs.push({
+      id: Date.now() + '-' + Math.round(Math.random()*1e5),
+      dateKey: localDateKey(), type: todaySessionType() || 'extra',
+      distanceKm: a.distanceKm || null, timeSec: a.durationSec || null,
+      paceMinPerKm: a.paceMinPerKm || null, intervals: '', notes: '', ts: Date.now()
+    });
+    markGarminHandled(a.id);
+    garminActivity = null;
+    save();
+    render();
+    return;
+  }
+  const dismissBtn = e.target.closest('[data-action="garmin-dismiss"]');
+  if (dismissBtn && garminActivity) {
+    markGarminHandled(garminActivity.id);
+    garminActivity = null;
+    render();
   }
 });
 window.addEventListener('storage', e => { if (e.key === LS) { state = load(); render(); } });
 
 render();
+fetchGarminImportCandidate();
 </script>
 </body>
 </html>
