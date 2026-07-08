@@ -216,14 +216,21 @@ function cacheTicker(){
 /* ============================================================
  * Derived running metrics
  * ============================================================ */
-// Rolling 7-day buckets ending today (index 0 = this week so far), not calendar weeks —
-// same rolling-window convention the rest of the suite uses (see caffeine.html / water.html).
+// Calendar weeks anchored to Monday — matching PROGRAM_START/WEEK_PLAN's own
+// Monday anchor in index.html (Gym/Running both reset "this week" on Monday),
+// not a rolling trailing 7 days. Index 0 = this week (Monday through now),
+// index 1 = last week, etc. A run last Thursday no longer counts toward
+// "this week" once Monday has passed, even though it's still within 7 days.
 function bucketWeeks(activities, weeks){
-  const now = Date.now(), DAY = 86400000, WEEK = 7*DAY;
+  const DAY = 86400000;
+  const now = new Date();
+  const daysSinceMonday = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  const thisMonday = new Date(now); thisMonday.setHours(0,0,0,0); thisMonday.setDate(thisMonday.getDate() - daysSinceMonday);
   const buckets = [];
   for (let i=0; i<weeks; i++) {
-    const toTs = now - i*WEEK, fromTs = toTs - WEEK;
-    const inWindow = activities.filter(a => a.ts > fromTs && a.ts <= toTs);
+    const fromTs = thisMonday.getTime() - i*7*DAY;
+    const toTs = fromTs + 7*DAY;
+    const inWindow = activities.filter(a => a.ts >= fromTs && a.ts < toTs);
     const km = inWindow.reduce((a,r)=>a+(r.distanceKm||0),0);
     const days = new Set(inWindow.map(a=>localDateKey(new Date(a.ts))));
     buckets.push({ fromTs, toTs, km, runDays: days.size, runCount: inWindow.length });
