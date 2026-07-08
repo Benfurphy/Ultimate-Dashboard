@@ -48,7 +48,9 @@ async function handleCallback(req, res, url) {
   const oauthErr = url.searchParams.get('error');
   const cookies = L.parseCookies(req);
   const secure = L.isHttps(req);
-  const back = (status) => { res.statusCode = 302; res.setHeader('Location', '/?ticktick=' + status); res.end(); };
+  // Back to goals.html, not the dashboard root — that's the only page that
+  // reads ?ticktick= and knows how to show the connected state / fetch tasks.
+  const back = (status) => { res.statusCode = 302; res.setHeader('Location', '/goals.html?ticktick=' + status); res.end(); };
 
   if (oauthErr) return back('denied');
   if (!code || !state || state !== cookies.ticktick_state) return back('error');
