@@ -176,7 +176,10 @@ function totals(){
 
 /* ---- views ---- */
 function goalFieldHtml(id, label, val){
-  return '<div class="goalField"><label for="' + id + '">' + label + '</label><input class="fieldInput" id="' + id + '" type="number" min="0" step="1" value="' + val + '"></div>';
+  // type="text" + inputmode, not type="number" — number inputs don't support
+  // selectionStart/setSelectionRange in Chrome (silently no-ops), which broke
+  // the cursor-preserving re-render below and reversed multi-digit input.
+  return '<div class="goalField"><label for="' + id + '">' + label + '</label><input class="fieldInput" id="' + id + '" type="text" inputmode="decimal" value="' + val + '"></div>';
 }
 function summaryHtml(){
   const t = totals();
@@ -249,9 +252,9 @@ function manualAddHtml(){
   return '<div class="manualForm">'
     + '<div class="manualGrid">'
     + '<div class="goalField"><label for="m-name">Name</label><input class="fieldInput" id="m-name" type="text" placeholder="Homemade chili" value="' + esc(manualName) + '" autocomplete="off"></div>'
-    + '<div class="goalField"><label for="m-p">Protein (g)</label><input class="fieldInput" id="m-p" type="number" min="0" step="0.1" value="' + esc(manualP) + '"></div>'
-    + '<div class="goalField"><label for="m-c">Carbs (g)</label><input class="fieldInput" id="m-c" type="number" min="0" step="0.1" value="' + esc(manualC) + '"></div>'
-    + '<div class="goalField"><label for="m-f">Fat (g)</label><input class="fieldInput" id="m-f" type="number" min="0" step="0.1" value="' + esc(manualF) + '"></div>'
+    + '<div class="goalField"><label for="m-p">Protein (g)</label><input class="fieldInput" id="m-p" type="text" inputmode="decimal" value="' + esc(manualP) + '"></div>'
+    + '<div class="goalField"><label for="m-c">Carbs (g)</label><input class="fieldInput" id="m-c" type="text" inputmode="decimal" value="' + esc(manualC) + '"></div>'
+    + '<div class="goalField"><label for="m-f">Fat (g)</label><input class="fieldInput" id="m-f" type="text" inputmode="decimal" value="' + esc(manualF) + '"></div>'
     + '</div>'
     + '<div class="manualSubmitRow"><span class="meta">= ' + round(cal) + ' kcal</span>'
     + '<button type="button" class="btn btn-primary" id="manualAddBtn">Add to ' + MEAL_LABELS[selectedMeal] + '</button>'
