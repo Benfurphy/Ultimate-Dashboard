@@ -458,6 +458,26 @@ async function syncGarmin(){
   render();
 }
 
+/* ---- Live TickTick sync — mirrors Whoop/Fitbit/Garmin: the dashboard fetches
+ * its own fresh copy on load, rather than only showing whatever goals.html
+ * last happened to cache. Without this, the To Do tile only updated after
+ * actually opening goals.html (which is the one place that used to refresh
+ * todo_ticktick_cache_v1). ---- */
+async function syncTickTick(){
+  if (!ON_SERVER) return;
+  try {
+    const r = await fetch('/api/ticktick', { cache: 'no-store' });
+    const j = await r.json();
+    if (j && j.connected) {
+      localStorage.setItem('todo_ticktick_cache_v1', JSON.stringify({ connected: true, tasks: j.tasks || [], total: j.total || 0, ts: Date.now() }));
+    } else {
+      const cur = lsGet('todo_ticktick_cache_v1');
+      if (cur && cur.connected) localStorage.removeItem('todo_ticktick_cache_v1'); // token expired/disconnected — fall back to the local list
+    }
+  } catch (e) { /* not deployed on Vercel, or request failed — leave whatever cache exists */ }
+  render();
+}
+
 function sourceLabel(s){ return s === 'apple' ? 'Apple Watch' : s === 'garmin' ? 'Garmin' : s === 'manual' ? 'Manual' : s === 'fitbit' ? 'Fitbit' : 'Whoop'; }
 function recTone(r){ if (r == null) return 'muted'; if (r >= 67) return 'good'; if (r >= 34) return 'watch'; return 'low'; }
 function formatHM(h){ if (h == null) return '—'; const hh = Math.floor(h); const mm = Math.round((h - hh) * 60); return hh + 'h ' + String(mm).padStart(2,'0') + 'm'; }
@@ -755,14 +775,19 @@ function supplementWindowHtml(){
 }
 // Wave-fill glass reading water.html's own water_ticker_cache_v1 (todayCount /
 // targetUnits / targetMl from its computeTarget()) — no need to duplicate
-// that formula here.
+// that formula here. The cache is only rewritten when water.html itself is
+// opened, though, so a cache left over from yesterday would otherwise show
+// yesterday's count forever until you visit water.html again — if the
+// cached snapshot is from a previous calendar day, today's count is
+// actually 0 (the target's still a reasonable estimate to keep showing).
 function waterGlassHtml(){
   try {
     const c = lsGet('water_ticker_cache_v1');
     if (!c || c.targetUnits == null) return '';
-    const pct = Math.max(0, Math.min(1, c.today / c.targetUnits));
+    const today = (c.ts && localDateKey(new Date(c.ts)) === localDateKey()) ? c.today : 0;
+    const pct = Math.max(0, Math.min(1, today / c.targetUnits));
     const waveY = 4 + (1 - pct) * 46; // 4 = full, 50 = empty, inside the 0..56 viewBox
-    const todayMl = c.today * (c.unitMl || 0);
+    const todayMl = today * (c.unitMl || 0);
     const targetL = (c.targetMl / 1000).toFixed(1) + 'L';
     const todayL = (todayMl / 1000).toFixed(1) + 'L';
     return '<div class="cardTop"><span class="cardIcon" aria-hidden>💧</span><span class="cardName">Water</span></div>'
@@ -1383,6 +1408,7 @@ applyTheme(currentTheme);
   syncWhoop();
   syncFitbit();
   syncGarmin();
+  syncTickTick();
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
