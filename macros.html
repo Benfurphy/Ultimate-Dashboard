@@ -82,6 +82,7 @@
   @media (max-width: 560px) { .manualGrid { grid-template-columns: 1fr 1fr; } }
   .manualSubmitRow { display:flex; align-items:center; gap: var(--space-3); margin-top: var(--space-4); flex-wrap:wrap; }
   .manualSubmitRow .meta { font-family: var(--font-mono); font-size:12px; color: var(--muted-strong); margin-right:auto; }
+  .saveFoodCheck { display:flex; align-items:center; gap:7px; margin-top: var(--space-4); font-size:13px; color: var(--muted-strong); cursor:pointer; }
 
   .mealGroup { margin-top: var(--space-4); }
   .mealGroupHead { display:flex; align-items:baseline; justify-content:space-between; margin-bottom: var(--space-2); }
@@ -144,6 +145,19 @@ function setGoalC(n){ store.goalC = n; saveAll(store); }
 function setGoalF(n){ store.goalF = n; saveAll(store); }
 let editGoals = false;
 
+// Manually-added foods saved for reuse (opt-in, via the manual-add form's
+// checkbox) — fixed servings, not per-100g like FOODS[], since a manual
+// entry is a one-off total to begin with, not something scaled by grams.
+function customFoods(){ return Array.isArray(store.customFoods) ? store.customFoods : []; }
+function setCustomFoods(list){ store.customFoods = list; saveAll(store); }
+function saveCustomFood(entry){
+  const list = customFoods();
+  const idx = list.findIndex(x => x.name.toLowerCase() === entry.name.toLowerCase());
+  if (idx >= 0) list[idx] = entry; else list.push(entry);
+  setCustomFoods(list);
+}
+function deleteCustomFood(name){ setCustomFoods(customFoods().filter(x => x.name !== name)); }
+
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function round(n){ return Math.round(n); }
 
@@ -165,7 +179,8 @@ let selectedMeal = defaultMealForNow(); // which meal the next add (search or ma
 /* ---- manual add ---- */
 let manualOpen = false;
 let manualName = '', manualP = '', manualC = '', manualF = '';
-function resetManualForm(){ manualOpen = false; manualName = ''; manualP = ''; manualC = ''; manualF = ''; }
+let manualSave = false; // opt-in: also save this as a reusable custom food
+function resetManualForm(){ manualOpen = false; manualName = ''; manualP = ''; manualC = ''; manualF = ''; manualSave = false; }
 
 /* ---- calculations ---- */
 function totals(){
@@ -229,15 +244,27 @@ function summaryHtml(){
 
 function resultsInner(){
   const q = query.trim().toLowerCase();
-  matches = q ? FOODS.filter(f => f.name.toLowerCase().includes(q)).slice(0, 8) : [];
   if (!q) return '<p class="empty">Start typing to find a food…</p>';
-  if (!matches.length) return '<p class="empty">No match. (Add it to the FOODS list in macros.html.)</p>';
-  return matches.map((f, i) =>
-    '<div class="foodRow"><div><div class="foodName">' + esc(f.name) + '</div>'
-    + '<div class="meta">' + f.cal + ' kcal · ' + f.p + 'P / ' + f.c + 'C / ' + f.f + 'F per 100g</div></div>'
-    + '<div style="display:flex;align-items:center;gap:8px;">'
-    + '<input class="fieldInput gramInput" type="number" min="0" placeholder="g" data-grams="' + i + '" />'
-    + '<button class="btn btn-primary" data-add="' + i + '">Add</button></div></div>').join('');
+  // Your saved foods surface first — fixed servings (source:'custom', no
+  // grams to enter), then the built-in per-100g database (source:'db').
+  const custom = customFoods().filter(f => f.name.toLowerCase().includes(q)).map(f => Object.assign({ source: 'custom' }, f));
+  const db = FOODS.filter(f => f.name.toLowerCase().includes(q)).map(f => Object.assign({ source: 'db' }, f));
+  matches = custom.concat(db).slice(0, 8);
+  if (!matches.length) return '<p class="empty">No match. Try "+ Add food manually" below.</p>';
+  return matches.map((f, i) => {
+    if (f.source === 'custom') {
+      return '<div class="foodRow"><div><div class="foodName">' + esc(f.name) + ' <span class="meta">★ your food</span></div>'
+        + '<div class="meta">' + round(f.cal) + ' kcal · ' + round(f.p) + 'P / ' + round(f.c) + 'C / ' + round(f.f) + 'F</div></div>'
+        + '<div style="display:flex;align-items:center;gap:8px;">'
+        + '<button class="btn btn-primary" data-add="' + i + '">Add</button>'
+        + '<button class="xBtn" data-del-custom="' + esc(f.name) + '" title="Remove from your foods">×</button></div></div>';
+    }
+    return '<div class="foodRow"><div><div class="foodName">' + esc(f.name) + '</div>'
+      + '<div class="meta">' + f.cal + ' kcal · ' + f.p + 'P / ' + f.c + 'C / ' + f.f + 'F per 100g</div></div>'
+      + '<div style="display:flex;align-items:center;gap:8px;">'
+      + '<input class="fieldInput gramInput" type="number" min="0" placeholder="g" data-grams="' + i + '" />'
+      + '<button class="btn btn-primary" data-add="' + i + '">Add</button></div></div>';
+  }).join('');
 }
 
 function mealPickerHtml(){
@@ -256,6 +283,7 @@ function manualAddHtml(){
     + '<div class="goalField"><label for="m-c">Carbs (g)</label><input class="fieldInput" id="m-c" type="text" inputmode="decimal" value="' + esc(manualC) + '"></div>'
     + '<div class="goalField"><label for="m-f">Fat (g)</label><input class="fieldInput" id="m-f" type="text" inputmode="decimal" value="' + esc(manualF) + '"></div>'
     + '</div>'
+    + '<label class="saveFoodCheck"><input type="checkbox" id="m-save"' + (manualSave ? ' checked' : '') + '> Save this food for next time</label>'
     + '<div class="manualSubmitRow"><span class="meta">= ' + round(cal) + ' kcal</span>'
     + '<button type="button" class="btn btn-primary" id="manualAddBtn">Add to ' + MEAL_LABELS[selectedMeal] + '</button>'
     + '<button type="button" class="btn btn-ghost" id="manualCancelBtn">Cancel</button></div>'
@@ -338,14 +366,26 @@ document.addEventListener('click', e => {
   const add = e.target.closest('[data-add]');
   if (add) {
     const f = matches[Number(add.getAttribute('data-add'))];
-    const gramsEl = document.querySelector('[data-grams="' + add.getAttribute('data-add') + '"]');
-    const grams = Number(gramsEl && gramsEl.value);
-    if (!f || !isFinite(grams) || grams <= 0) { alert('Enter how many grams.'); return; }
-    const k = grams / 100;
+    if (!f) return;
     const log = todaysLog();
-    log.push({ name: f.name, grams, cal: f.cal*k, p: f.p*k, c: f.c*k, f: f.f*k, meal: selectedMeal });
+    if (f.source === 'custom') {
+      // Fixed serving, saved as-is — no grams to scale.
+      log.push({ name: f.name, cal: f.cal, p: f.p, c: f.c, f: f.f, meal: selectedMeal });
+    } else {
+      const gramsEl = document.querySelector('[data-grams="' + add.getAttribute('data-add') + '"]');
+      const grams = Number(gramsEl && gramsEl.value);
+      if (!isFinite(grams) || grams <= 0) { alert('Enter how many grams.'); return; }
+      const k = grams / 100;
+      log.push({ name: f.name, grams, cal: f.cal*k, p: f.p*k, c: f.c*k, f: f.f*k, meal: selectedMeal });
+    }
     setTodaysLog(log);
     query = '';
+    render();
+    return;
+  }
+  const delCustom = e.target.closest('[data-del-custom]');
+  if (delCustom) {
+    deleteCustomFood(delCustom.getAttribute('data-del-custom'));
     render();
     return;
   }
@@ -375,6 +415,10 @@ document.addEventListener('click', e => {
     render();
     return;
   }
+  if (e.target.id === 'm-save') {
+    manualSave = e.target.checked;
+    return; // native checkbox already shows its own new state — no render needed
+  }
   if (e.target.id === 'manualAddBtn') {
     const name = manualName.trim();
     const p = Number(manualP) || 0, c = Number(manualC) || 0, f = Number(manualF) || 0;
@@ -384,6 +428,7 @@ document.addEventListener('click', e => {
     const log = todaysLog();
     log.push({ name, cal, p, c, f, meal: selectedMeal });
     setTodaysLog(log);
+    if (manualSave) saveCustomFood({ name, cal, p, c, f });
     resetManualForm();
     render();
     return;
