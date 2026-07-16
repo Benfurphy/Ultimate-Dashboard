@@ -67,13 +67,6 @@ const CONFIG = {
     splitId: "lower_a"
   },
 
-  // Progression rule: hit this many reps on the top set → coach tells you
-  // to add weight next session. Lower this to be more aggressive (e.g. 6),
-  // raise it for more volume bias (e.g. 10). The 4 main lifts (flagged
-  // isMainLift below) get their rep target overridden week-to-week by
-  // PROGRAM instead — see programSchemeForWeek().
-  upgradeAtReps: 8,
-
   // Composition estimate (optional, for the weight chart).
   // Estimates how much of recent weight change is muscle vs fat by
   // cross-referencing the strength trend. Set yearsTraining to scale
@@ -91,7 +84,10 @@ const CONFIG = {
   //   day         — one of the day ids above
   //   repMin      — bottom of your target rep range
   //   repMax      — top of your target rep range
-  //   step        — how much weight you add when progressing (kg/lb)
+  //   step        — how much weight you add when progressing (kg/lb).
+  //                 Sized per double-progression guidance: lower body
+  //                 compounds 2.5-5, upper body compounds 1-2.5,
+  //                 isolation moves 0.5-1 (or ~2-5% of the load).
   //   startWeight — starting weight (ignored when bw: true) — these are
   //                 conservative placeholders since the program doc didn't
   //                 specify your actual working weights; adjust with the
@@ -108,17 +104,17 @@ const CONFIG = {
     { name: "Back squat",              gym: "both", day: "lower_a", repMin: 6,  repMax: 8,  step: 5,    startWeight: 60, isMainLift: true },
     { name: "Romanian deadlift",       gym: "both", day: "lower_a", repMin: 8,  repMax: 10, step: 5,    startWeight: 50 },
     { name: "Bulgarian split squat",   gym: "both", day: "lower_a", repMin: 8,  repMax: 10, step: 2.5,  startWeight: 15 },
-    { name: "DB/band leg curl",        gym: "both", day: "lower_a", repMin: 10, repMax: 12, step: 2.5,  startWeight: 10 },
-    { name: "Standing calf raise",     gym: "both", day: "lower_a", repMin: 15, repMax: 20, step: 5,    startWeight: 40 },
+    { name: "DB/band leg curl",        gym: "both", day: "lower_a", repMin: 10, repMax: 12, step: 1,    startWeight: 10 },
+    { name: "Standing calf raise",     gym: "both", day: "lower_a", repMin: 15, repMax: 20, step: 2,    startWeight: 40 },
     { name: "Weighted plank (sec held)", gym: "both", day: "lower_a", repMin: 40, repMax: 60, step: 1, startWeight: 0, bw: true },
 
     // Tuesday — Upper A (push, shoulder-friendly)
     { name: "Flat DB bench press",     gym: "both", day: "upper_a", repMin: 6,  repMax: 8,  step: 2.5,  startWeight: 22.5, isMainLift: true },
     { name: "Landmine press (1-arm)",  gym: "both", day: "upper_a", repMin: 8,  repMax: 10, step: 2.5,  startWeight: 15 },
     { name: "Weighted push-up / DB floor press", gym: "both", day: "upper_a", repMin: 10, repMax: 12, step: 2.5, startWeight: 10 },
-    { name: "Face pull",               gym: "both", day: "upper_a", repMin: 13, repMax: 15, step: 2.5,  startWeight: 15 },
-    { name: "Band external rotation",  gym: "both", day: "upper_a", repMin: 13, repMax: 15, step: 1.25, startWeight: 5 },
-    { name: "Triceps rope pushdown / band extension", gym: "both", day: "upper_a", repMin: 10, repMax: 12, step: 2.5, startWeight: 20 },
+    { name: "Face pull",               gym: "both", day: "upper_a", repMin: 13, repMax: 15, step: 1.25, startWeight: 15 },
+    { name: "Band external rotation",  gym: "both", day: "upper_a", repMin: 13, repMax: 15, step: 1,    startWeight: 5 },
+    { name: "Triceps rope pushdown / band extension", gym: "both", day: "upper_a", repMin: 10, repMax: 12, step: 1.25, startWeight: 20 },
 
     // Thursday — Lower B (hinge / unilateral, moderate)
     { name: "Trap bar / conventional deadlift", gym: "both", day: "lower_b", repMin: 6, repMax: 8, step: 5, startWeight: 80, isMainLift: true },
@@ -131,9 +127,9 @@ const CONFIG = {
     { name: "Pull-up / chin-up (assisted ok)", gym: "both", day: "upper_b", repMin: 6, repMax: 10, step: 1, startWeight: 0, bw: true },
     { name: "Barbell / DB bent-over row", gym: "both", day: "upper_b", repMin: 6, repMax: 8, step: 2.5, startWeight: 40, isMainLift: true },
     { name: "Single-arm DB row",       gym: "both", day: "upper_b", repMin: 10, repMax: 10, step: 2.5,  startWeight: 20 },
-    { name: "Rear delt fly (light)",   gym: "both", day: "upper_b", repMin: 13, repMax: 15, step: 1.25, startWeight: 8 },
+    { name: "Rear delt fly (light)",   gym: "both", day: "upper_b", repMin: 13, repMax: 15, step: 1,    startWeight: 8 },
     { name: "Band pull-apart",         gym: "both", day: "upper_b", repMin: 18, repMax: 20, step: 1,    startWeight: 0, bw: true },
-    { name: "DB curl",                 gym: "both", day: "upper_b", repMin: 10, repMax: 12, step: 1.25, startWeight: 12.5 }
+    { name: "DB curl",                 gym: "both", day: "upper_b", repMin: 10, repMax: 12, step: 1,    startWeight: 12.5 }
   ]
 };
 
@@ -1723,32 +1719,35 @@ img, video, canvas, svg { max-width: 100%; }
   function getLogs() { return (state.logs[state.currentEx] || []).slice(); }
 
   // Prescription engine — "what should I do next session?"
-  // Upgrade trigger: hits CONFIG.upgradeAtReps (default 8) OR the
-  // exercise's repMax, whichever fires first. So a 5-8 lifter hits
-  // upgrade at 8; a 6-12 lifter ALSO hits it at 8 instead of grinding
-  // out 12 reps before adding weight.
+  // Pure double progression, run independently per exercise:
+  //   - Stay at the same weight until you hit the TOP of the rep range
+  //     (repMax) with good technique at 1-2 RIR, then add load (ex.step,
+  //     already sized per lift category — see defaultExercises above) and
+  //     drop back to the bottom of the range.
+  //   - Reps land inside the range but below repMax → hold the weight,
+  //     push for one more rep next time.
+  //   - Reps fall short of repMin two sessions in a row at the same
+  //     weight → deload ~7.5% (within the 5-10% band) and reset to repMax
+  //     so the climb back up is a stepping stone, not a full restart.
   function getRx(ex, logs) {
     if (!logs.length) return null;
     const last = logs[logs.length - 1];
     const { weight, reps } = last;
     const { repMin, repMax, step, bw } = ex;
-    const upgradeAt = Math.min(CONFIG.upgradeAtReps || 8, repMax);
-    let stuck = 0;
-    for (let i = logs.length - 1; i >= 0; i--) {
-      if (logs[i].weight === weight) stuck++; else break;
-    }
     if (bw) {
-      if (reps >= upgradeAt) return { type: 'up', weight: 0, reps: reps + 1, tag: 'Push for more', reason: reps + ' reps — strong. Push for ' + (reps + 1) + ' next time.', bw: true };
+      if (reps >= repMax) return { type: 'up', weight: 0, reps: reps + 1, tag: 'Push for more', reason: reps + ' reps — top of your range. Push for ' + (reps + 1) + ' next time.', bw: true };
       if (reps >= repMin) return { type: 'hold', weight: 0, reps: reps + 1, tag: 'Add a rep', reason: reps + ' reps. Push for ' + (reps + 1) + ' next session.', bw: true };
       return { type: 'hold', weight: 0, reps: repMin, tag: 'Repeat', reason: reps + ' reps fell short. Repeat until you hit ' + repMin + '+.', bw: true };
     }
-    if (stuck >= 3 && reps < repMin) {
-      const dl = roundToStep(weight * 0.9, step);
-      return { type: 'down', weight: dl, reps: repMax, tag: 'Deload', reason: 'Stuck at ' + weight + unit() + ' for ' + stuck + ' sessions. Drop 10%, reset, build back cleaner.' };
+    const prev = logs.length >= 2 ? logs[logs.length - 2] : null;
+    const missedTwice = reps < repMin && prev && prev.weight === weight && prev.reps < repMin;
+    if (missedTwice) {
+      const dl = roundToStep(weight * 0.925, step);
+      return { type: 'down', weight: dl, reps: repMax, tag: 'Deload', reason: 'Missed ' + repMin + '+ reps two sessions in a row at ' + weight + unit() + '. Drop ~7.5%, reset, build back up.' };
     }
-    if (reps >= upgradeAt) return { type: 'up', weight: weight + step, reps: repMin, tag: 'Add weight', reason: 'You hit ' + reps + ' reps — time to add ' + step + unit() + '. Expect ' + repMin + '-' + (repMin + 1) + ' next session.' };
-    if (reps >= repMin && reps < upgradeAt) return { type: 'hold', weight: weight, reps: reps + 1, tag: 'Add a rep', reason: reps + ' reps in target. Stay at ' + weight + unit() + ', push for ' + (reps + 1) + '.' };
-    return { type: 'hold', weight: weight, reps: repMin, tag: 'Repeat', reason: reps + ' reps short of ' + repMin + '-' + upgradeAt + '. Repeat ' + weight + unit() + ' until you hit ' + repMin + '+ clean.' };
+    if (reps >= repMax) return { type: 'up', weight: weight + step, reps: repMin, tag: 'Add weight', reason: 'You hit the top of your range (' + reps + ' reps) — add ' + step + unit() + '. Expect ' + repMin + '-' + (repMin + 1) + ' next session.' };
+    if (reps >= repMin && reps < repMax) return { type: 'hold', weight: weight, reps: reps + 1, tag: 'Add a rep', reason: reps + ' reps in range. Stay at ' + weight + unit() + ', push for ' + (reps + 1) + '.' };
+    return { type: 'hold', weight: weight, reps: repMin, tag: 'Repeat', reason: reps + ' reps short of ' + repMin + '-' + repMax + '. Repeat ' + weight + unit() + ' until you hit ' + repMin + '+ clean.' };
   }
 
   // ============================================================
@@ -2024,25 +2023,36 @@ img, video, canvas, svg { max-width: 100%; }
       + '</ul></div>';
   }
 
-  // This week's target — main lifts only (isMainLift), driven by PROGRAM.
+  // This week's target — shown for every exercise. The 4 main lifts
+  // (isMainLift) get their sets/reps/RPE driven week-to-week by PROGRAM;
+  // every other exercise shows its own static rep range with a double
+  // progression reminder, so switching exercises never leaves this blank.
   function renderWeekTarget() {
     const section = $('weekTargetSection');
     const ex = getCurrentEx();
-    const base = ex && state.exercises.find(e => e.id === ex.id);
-    if (!ex || !base || !base.isMainLift) { section.style.display = 'none'; return; }
-    const info = programWeekInfo();
-    if (info.status !== 'active' || !info.scheme) {
-      section.style.display = 'none';
-      return;
+    if (!ex) { section.style.display = 'none'; return; }
+    const base = state.exercises.find(e => e.id === ex.id);
+    if (base && base.isMainLift) {
+      const info = programWeekInfo();
+      if (info.status === 'active' && info.scheme) {
+        section.style.display = '';
+        const override = todaysReadinessOverride();
+        const s = override ? applyReadinessToScheme(info.scheme, override.tier) : info.scheme;
+        const repTxt = s.repMin === s.repMax ? s.repMin : (s.repMin + '–' + s.repMax);
+        $('weekTargetWrap').innerHTML = '<div class="po-week-target">'
+          + '<div><div class="po-week-target-main">' + s.sets + ' sets × ' + repTxt + ' reps @ RPE ' + escape(s.rpe) + '</div>'
+          + '<div class="po-week-target-sub">Week ' + info.week + ' · ' + escape(s.block) + (s.readinessAdjusted ? ' · recovery-adjusted' : '') + '</div></div>'
+          + '<span class="po-week-target-badge' + (s.deload ? ' deload' : (s.readinessAdjusted ? ' readiness' : '')) + '">' + (s.deload ? 'Deload' : (s.readinessAdjusted ? 'Adjusted' : escape(s.block))) + '</span>'
+          + '</div>';
+        return;
+      }
     }
     section.style.display = '';
-    const override = todaysReadinessOverride();
-    const s = override ? applyReadinessToScheme(info.scheme, override.tier) : info.scheme;
-    const repTxt = s.repMin === s.repMax ? s.repMin : (s.repMin + '–' + s.repMax);
+    const repTxt = ex.repMin === ex.repMax ? ex.repMin : (ex.repMin + '–' + ex.repMax);
     $('weekTargetWrap').innerHTML = '<div class="po-week-target">'
-      + '<div><div class="po-week-target-main">' + s.sets + ' sets × ' + repTxt + ' reps @ RPE ' + escape(s.rpe) + '</div>'
-      + '<div class="po-week-target-sub">Week ' + info.week + ' · ' + escape(s.block) + (s.readinessAdjusted ? ' · recovery-adjusted' : '') + '</div></div>'
-      + '<span class="po-week-target-badge' + (s.deload ? ' deload' : (s.readinessAdjusted ? ' readiness' : '')) + '">' + (s.deload ? 'Deload' : (s.readinessAdjusted ? 'Adjusted' : escape(s.block))) + '</span>'
+      + '<div><div class="po-week-target-main">' + repTxt + ' reps @ RPE 8–9 (1–2 RIR)</div>'
+      + '<div class="po-week-target-sub">Double progression — same weight until every set hits ' + ex.repMax + ', then add load</div></div>'
+      + '<span class="po-week-target-badge">Accessory</span>'
       + '</div>';
   }
 

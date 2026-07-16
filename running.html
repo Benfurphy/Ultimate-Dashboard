@@ -313,9 +313,9 @@ function weekHeroHtml(){
   return '<section class="card"><span class="cardName">This week</span>' + badge
     + body
     + '<div class="zoneRow">'
-    + '<div class="zoneChip"><span class="zN">6:15–6:45</span><span class="zL">Easy /km</span></div>'
-    + '<div class="zoneChip"><span class="zN">5:25–5:40</span><span class="zL">Tempo/threshold /km</span></div>'
-    + '<div class="zoneChip"><span class="zN">4:50–5:05</span><span class="zL">Interval /km</span></div>'
+    + '<div class="zoneChip"><span class="zN">5:45–6:20</span><span class="zL">Easy /km</span></div>'
+    + '<div class="zoneChip"><span class="zN">5:00–5:15</span><span class="zL">Tempo/threshold /km</span></div>'
+    + '<div class="zoneChip"><span class="zN">4:25–4:40</span><span class="zL">Interval /km</span></div>'
     + '</div></section>';
 }
 function weekProgressHtml(week){
@@ -338,7 +338,7 @@ function logFormHtml(){
     + '</select></div>'
     + '<div class="logField"><label for="f-dist">Distance (km, optional)</label><input id="f-dist" class="fieldInput" type="number" step="0.1" min="0" placeholder="10" value="' + esc(ui.distance) + '"></div>'
     + '<div class="logField"><label for="f-time">Time (mm:ss, optional)</label><input id="f-time" class="fieldInput" type="text" placeholder="52:30" value="' + esc(ui.time) + '"></div>'
-    + '<div class="logField"><label for="f-pace">Pace (min/km, optional)</label><input id="f-pace" class="fieldInput" type="text" placeholder="4:50" value="' + esc(ui.pace) + '"></div>'
+    + '<div class="logField"><label for="f-pace">Pace (min/km, optional)</label><input id="f-pace" class="fieldInput" type="text" placeholder="4:30" value="' + esc(ui.pace) + '"></div>'
     + '<div class="logField logNotes"><label for="f-intervals">Intervals (optional)</label><input id="f-intervals" class="fieldInput" type="text" placeholder="6×2min hard / 2min jog" value="' + esc(ui.intervals) + '"></div>'
     + '<div class="logField logNotes"><label for="f-notes">Notes (optional)</label><input id="f-notes" class="fieldInput" type="text" placeholder="felt good, shoulder fine" value="' + esc(ui.notes) + '"></div>'
     + '<div class="logSubmitRow"><button type="submit" class="btn btn-primary">Log run</button></div>'
