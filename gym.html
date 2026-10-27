@@ -134,26 +134,111 @@ const CONFIG = {
 };
 
 // ============================================================
-// 12-WEEK PROGRAM — periodization layered on top of the exercise list
-// above. Only the 4 exercises flagged isMainLift get their rep target
-// (and displayed set/RPE guidance) driven by this week-by-week block
-// schedule; every other exercise keeps the static range from
-// defaultExercises for the whole 12 weeks, same as the original doc.
+// PROGRAMS — the dropdown in the Program section picks one. The chosen
+// program drives the week badge, the roadmap shown, and the weekly target
+// for the 4 exercises flagged isMainLift; every other exercise keeps its
+// static range from defaultExercises. Archived programs are reference
+// only — while one is selected, targets keep following the first
+// non-archived program in the list.
+//
+// schemeFor(week, dayId) returns the main lift's scheme for that day:
+//   { sets, setsLabel?, repMin?, repMax?, rpe, block, deload, kg?, note? }
+//   (no repMin/repMax = keep the exercise's own range), or
+//   { off: true, block, note } when no loaded main lift is prescribed.
 // ============================================================
-const PROGRAM = {
-  startDate: "2026-07-06", // Monday — same date as splitAnchor above
-  totalWeeks: 12,
-  // Each block covers a run of weeks with one rep/set/RPE scheme for the
-  // main lifts. `deload` weeks get a lighter, shorter-visibility flag.
-  blocks: [
-    { weeks: [1,2,3],   block: "Foundation", sets: 4, repMin: 6, repMax: 8, rpe: "6–7",  deload: false },
-    { weeks: [4],       block: "Deload",     sets: 2, repMin: 6, repMax: 8, rpe: "5–6",  deload: true  },
-    { weeks: [5,6,7],   block: "Build",      sets: 4, repMin: 5, repMax: 6, rpe: "7–8",  deload: false },
-    { weeks: [8],       block: "Deload",     sets: 2, repMin: 5, repMax: 6, rpe: "5–6",  deload: true  },
-    { weeks: [9,10,11], block: "Peak",       sets: 5, repMin: 3, repMax: 4, rpe: "8–9",  deload: false },
-    { weeks: [12],      block: "Test",       sets: 2, repMin: 3, repMax: 4, rpe: "6 (retest)", deload: true }
-  ]
-};
+
+// Hybrid Performance Block (from 19 Oct 2026) — loads from an RTS-style
+// reps x RPE chart off 1RMs of squat 190 / deadlift 190 / bench 100 kg.
+// The row has no 1RM, so it stays RPE-only.
+const HYBRID_BLOCK_NAMES = { 1:'Reset', 2:'Reset', 3:'Reset', 4:'Deload', 5:'Build', 6:'Build', 7:'Build', 8:'Deload', 9:'Peak', 10:'Peak', 11:'Peak', 12:'Test' };
+function hybridScheme(h, day) {
+  const block = HYBRID_BLOCK_NAMES[h];
+  if (!block) return null;
+  const deload = h === 4 || h === 8, test = h === 12;
+  if (day === 'lower_b') return (deload || test)
+    ? { sets: 2, repMin: 5, repMax: 5, rpe: 'light', block, deload: true, kg: '120–125' }
+    : { sets: 3, repMin: 5, repMax: 5, rpe: '7', block, deload: false, kg: '150' };
+  if (day === 'lower_a') {
+    if (test) return { sets: 2, repMin: 1, repMax: 3, rpe: 'retest', block, deload: true, note: "light volume, then a real top-set attempt — don't pre-calculate it" };
+    if (deload) return { sets: 2, repMin: 6, repMax: 6, rpe: 'light', block, deload: true, kg: '~120' };
+    if (h <= 3) return { sets: 4, repMin: 6, repMax: 6, rpe: '7', block, deload: false, kg: '145' };
+    if (h <= 7) return { sets: 4, repMin: 5, repMax: 5, rpe: '7–8', block, deload: false, kg: '150–155' };
+    return { sets: 5, repMin: 3, repMax: 3, rpe: '8–9', block, deload: false, kg: '162.5–170' };
+  }
+  const bench = day === 'upper_a';
+  const benchNote = 'barbell-equivalent — as two DBs, start ~10–15% lighter combined';
+  if (test) return { sets: 2, rpe: 'light', block, deload: true, note: 'light volume check' };
+  if (deload) return { sets: 2, repMin: 6, repMax: 8, rpe: 'light', block, deload: true, kg: bench ? '~60' : null, note: bench ? benchNote : null };
+  if (h <= 3) return { sets: 4, repMin: 6, repMax: 8, rpe: '7', block, deload: false, kg: bench ? '70–75' : null, note: bench ? benchNote : null };
+  if (h <= 7) return { sets: 4, repMin: 6, repMax: 6, rpe: '7–8', block, deload: false, kg: bench ? '75–80' : null, note: bench ? benchNote : null };
+  return { sets: 5, repMin: 5, repMax: 5, rpe: '8–9', block, deload: false, kg: bench ? '80–85' : null, note: bench ? benchNote : null };
+}
+function upperMaintenance(block) {
+  return { sets: 3, setsLabel: '2–3', rpe: '6–7', block, deload: false, note: 'maintenance, 15–20 min after the easy run' };
+}
+
+const SUMMER_BLOCKS = [
+  { weeks: [1,2,3],   block: "Foundation", sets: 4, repMin: 6, repMax: 8, rpe: "6–7",  deload: false },
+  { weeks: [4],       block: "Deload",     sets: 2, repMin: 6, repMax: 8, rpe: "5–6",  deload: true  },
+  { weeks: [5,6,7],   block: "Build",      sets: 4, repMin: 5, repMax: 6, rpe: "7–8",  deload: false },
+  { weeks: [8],       block: "Deload",     sets: 2, repMin: 5, repMax: 6, rpe: "5–6",  deload: true  },
+  { weeks: [9,10,11], block: "Peak",       sets: 5, repMin: 3, repMax: 4, rpe: "8–9",  deload: false },
+  { weeks: [12],      block: "Test",       sets: 2, repMin: 3, repMax: 4, rpe: "6 (retest)", deload: true }
+];
+
+const PROGRAMS = [
+  {
+    id: 'marathon-2027',
+    name: 'Marathon Roadmap',
+    dates: 'Oct–Apr',
+    startDate: '2026-10-26', // Monday
+    totalWeeks: 25,
+    deloadWeeks: [3, 7, 11, 14], // strength deloads (the long-run deloads are 4, 8, 14, 19)
+    phaseFor(wk) { return wk <= 11 ? 'Base Build' : wk <= 18 ? 'Half-Specific' : 'Bridge to Full'; },
+    schemeFor(wk, day) {
+      const lower = day === 'lower_a' || day === 'lower_b';
+      if (wk <= 11) {
+        // Mon/Thu follow the Hybrid Block, which started a week earlier.
+        if (!lower) return upperMaintenance('Base Build');
+        const h = hybridScheme(wk + 1, day);
+        return h && Object.assign({}, h, { block: 'Base · ' + h.block });
+      }
+      if (wk <= 18) {
+        if (!lower) return upperMaintenance('Half-Specific');
+        if (wk === 18) return { sets: 2, repMin: 5, repMax: 5, rpe: 'light', block: 'Race week', deload: true, note: 'Bendigo on Sunday — keep it light or skip' };
+        const taper = wk >= 16, deload = wk === 14;
+        if (day === 'lower_a') return { sets: 3, repMin: 5, repMax: 5, rpe: '7', block: taper ? 'Taper' : 'Half-Specific', deload: taper, kg: taper ? '~145–150' : '~150–155', note: 'main lift only' };
+        return (deload || taper)
+          ? { sets: 2, repMin: 5, repMax: 5, rpe: 'light', block: deload ? 'Deload' : 'Taper', deload: true, kg: '120–125', note: 'main lift only' }
+          : { sets: 3, repMin: 5, repMax: 5, rpe: '7', block: 'Half-Specific', deload: false, kg: '~150', note: 'main lift only' };
+      }
+      if (lower) return { off: true, block: 'Bridge to Full', note: wk >= 22 ? 'Loaded lifts dropped from week 22 — the long run is the priority. Keep the core work.' : 'Phase 3 — optional light/bodyweight work only, no loaded barbell lifts.' };
+      return wk >= 22 ? { off: true, block: 'Bridge to Full', note: 'Upper-body maintenance dropped from week 22.' } : upperMaintenance('Bridge to Full');
+    }
+  },
+  {
+    id: 'hybrid-2026',
+    name: 'Hybrid Performance Block',
+    dates: 'Oct–Jan',
+    startDate: '2026-10-19', // Monday
+    totalWeeks: 12,
+    deloadWeeks: [4, 8, 12],
+    schemeFor(wk, day) { return hybridScheme(wk, day); }
+  },
+  {
+    id: 'summer-2026',
+    name: 'Summer 12-Week',
+    dates: 'Jul–Sep',
+    archived: true,
+    startDate: '2026-07-06', // Monday — same date as splitAnchor above
+    totalWeeks: 12,
+    deloadWeeks: [4, 8, 12],
+    schemeFor(wk) {
+      const b = SUMMER_BLOCKS.find(b => b.weeks.indexOf(wk) !== -1);
+      return b ? { sets: b.sets, repMin: b.repMin, repMax: b.repMax, rpe: b.rpe, block: b.block, deload: b.deload } : null;
+    }
+  }
+];
 </script>
 
 <style>
@@ -945,6 +1030,7 @@ img, video, canvas, svg { max-width: 100%; }
   display: flex; flex-direction: column; gap: 16px;
   font-size: 12px; color: var(--text-2); line-height: 1.6;
 }
+#programSelect { margin-bottom: 2px; }
 .po-program-section h4 { margin: 0 0 6px; font-size: 12px; color: var(--text-1); font-weight: 700; letter-spacing: 0.02em; }
 .po-program-list { margin: 0; padding-left: 18px; }
 .po-program-list li { margin-bottom: 6px; }
@@ -1179,7 +1265,7 @@ img, video, canvas, svg { max-width: 100%; }
   <!-- 12-WEEK PROGRAM — reference: roadmap, rationale, shoulder-care protocol -->
   <div class="po-program-wrap">
     <button type="button" class="po-tw-past-toggle" id="programToggle" aria-expanded="false">
-      <span>12-Week Program <span class="po-tw-past-count" id="programWeekBadge">—</span></span>
+      <span><span id="programTitle">Program</span> <span class="po-tw-past-count" id="programWeekBadge">—</span></span>
       <span class="po-tw-past-arrow" id="programArrow">▾</span>
     </button>
     <div class="po-program-body" id="programBody" style="display:none"></div>
@@ -1605,20 +1691,32 @@ img, video, canvas, svg { max-width: 100%; }
   }
 
   // ============================================================
-  // PROGRAM WEEK — maps today's date to a week number (1-12) using
-  // PROGRAM.startDate, and looks up that week's main-lift scheme.
+  // PROGRAM WEEK — the selected program (dropdown, saved per device) and
+  // the one that drives targets (never an archived one).
   // ============================================================
-  function programWeekNumber(d) {
+  const PROGRAM_KEY = 'po_program_v1';
+  function selectedProgram() {
+    let id = null;
+    try { id = localStorage.getItem(PROGRAM_KEY); } catch (e) {}
+    return PROGRAMS.find(p => p.id === id) || PROGRAMS.find(p => !p.archived);
+  }
+  function targetProgram() {
+    const p = selectedProgram();
+    return p.archived ? PROGRAMS.find(q => !q.archived) : p;
+  }
+  function programWeekNumber(d, program) {
     d = d || new Date();
-    const start = new Date(PROGRAM.startDate + 'T00:00:00');
+    const start = new Date(program.startDate + 'T00:00:00');
     const t = new Date(d); t.setHours(0, 0, 0, 0); start.setHours(0, 0, 0, 0);
     const days = Math.floor((t - start) / 86400000);
     if (days < 0) return 0; // program hasn't started yet
     return Math.floor(days / 7) + 1;
   }
-  function programSchemeForWeek(wk) {
-    for (const b of PROGRAM.blocks) if (b.weeks.indexOf(wk) !== -1) return b;
-    return null;
+  // Main-lift scheme for a split day this week, or null when the target
+  // program isn't running.
+  function mainLiftScheme(dayId) {
+    const info = programWeekInfo();
+    return info.status === 'active' ? info.program.schemeFor(info.week, dayId) : null;
   }
 
   // ============================================================
@@ -1692,22 +1790,23 @@ img, video, canvas, svg { max-width: 100%; }
       renderAll();
     });
   }
-  function programWeekInfo(d) {
-    const wk = programWeekNumber(d);
+  function programWeekInfo(d, program) {
+    program = program || targetProgram();
+    const wk = programWeekNumber(d, program);
     if (wk < 1) {
-      const daysUntil = Math.ceil((new Date(PROGRAM.startDate + 'T00:00:00') - new Date()) / 86400000);
-      return { status: 'upcoming', week: 0, daysUntil };
+      const daysUntil = Math.ceil((new Date(program.startDate + 'T00:00:00') - new Date()) / 86400000);
+      return { status: 'upcoming', week: 0, daysUntil, program };
     }
-    if (wk > PROGRAM.totalWeeks) return { status: 'complete', week: PROGRAM.totalWeeks };
-    return { status: 'active', week: wk, scheme: programSchemeForWeek(wk) };
+    if (wk > program.totalWeeks) return { status: 'complete', week: program.totalWeeks, program };
+    return { status: 'active', week: wk, program };
   }
   // Main lifts (isMainLift: true) get their rep target overridden by the
   // current program week's scheme; every other exercise is returned as-is.
   function effectiveEx(ex) {
     if (!ex || !ex.isMainLift) return ex;
-    const info = programWeekInfo();
-    if (info.status !== 'active' || !info.scheme) return ex;
-    return Object.assign({}, ex, { repMin: info.scheme.repMin, repMax: info.scheme.repMax });
+    const s = mainLiftScheme(ex.day);
+    if (!s || s.off || s.repMin == null) return ex;
+    return Object.assign({}, ex, { repMin: s.repMin, repMax: s.repMax });
   }
   function getCurrentEx() {
     const f = getFiltered();
@@ -1976,51 +2075,126 @@ img, video, canvas, svg { max-width: 100%; }
   // PROGRAM — badge + reference body (roadmap, rationale, shoulder care)
   // ============================================================
   function programBadgeText(info) {
+    if (info.program.archived) return 'archived';
     if (info.status === 'upcoming') return info.daysUntil === 1 ? 'starts tomorrow' : 'starts in ' + info.daysUntil + 'd';
     if (info.status === 'complete') return 'complete';
-    return 'week ' + info.week + '/' + PROGRAM.totalWeeks + (info.scheme && info.scheme.deload ? ' · deload' : '');
+    return 'week ' + info.week + '/' + info.program.totalWeeks + (info.program.deloadWeeks.indexOf(info.week) !== -1 ? ' · deload' : '');
   }
+  function programWeekDate(program, wk) {
+    const d = new Date(program.startDate + 'T00:00:00');
+    d.setDate(d.getDate() + (wk - 1) * 7);
+    return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+  }
+  // One roadmap cell: "4×6 · 145" / "2–3 @6–7" / "—".
+  function schemeCell(s) {
+    if (!s || s.off) return '—';
+    const reps = s.repMin == null ? '' : '×' + (s.repMin === s.repMax ? s.repMin : s.repMin + '–' + s.repMax);
+    return (s.setsLabel || s.sets) + reps + (reps ? '' : ' @' + s.rpe) + (s.kg ? ' · ' + s.kg : '');
+  }
+  function roadmapTable(program, info, cols) {
+    const rows = [];
+    for (let w = 1; w <= program.totalWeeks; w++) {
+      const current = info.status === 'active' && w === info.week && !program.archived;
+      const deload = program.deloadWeeks.indexOf(w) !== -1;
+      rows.push('<tr class="' + (deload ? 'deload' : '') + '"' + (current ? ' style="outline:1px solid var(--brand)"' : '') + '>'
+        + '<td>' + w + (current ? ' ←' : '') + '</td><td>' + programWeekDate(program, w) + '</td>'
+        + cols.map(c => '<td>' + escape(c.cell(w)) + '</td>').join('') + '</tr>');
+    }
+    return '<div class="po-roadmap-scroll"><table class="po-roadmap-table">'
+      + '<tr><th>Wk</th><th>From</th>' + cols.map(c => '<th>' + c.label + '</th>').join('') + '</tr>'
+      + rows.join('') + '</table></div>';
+  }
+  function programList(items) { return '<ul class="po-program-list">' + items.map(x => '<li>' + x + '</li>').join('') + '</ul>'; }
+  function programSection(title, html) { return '<div class="po-program-section"><h4>' + title + '</h4>' + html + '</div>'; }
+
+  function marathonProgramHtml(p, info) {
+    return programSection('How strength fits the marathon build', programList([
+      '<b>Phase 1 · Base Build (wk 1–11)</b> — Mon squat / Thu deadlift keep the Hybrid Block loads (it started a week earlier, so its deloads land a week before the long-run deloads).',
+      '<b>Phase 2 · Half-Specific (wk 12–18)</b> — main lift only, lighter; taper into Bendigo (Sun 28 Feb).',
+      '<b>Phase 3 · Bridge to Full (wk 19–25)</b> — loaded lower lifts parked; optional light/bodyweight work, dropped from week 22.',
+      '<b>Tue / Fri</b> — easy run, then 15–20 min upper-body maintenance at RPE 6–7, 2–3 sets each. Dropped from week 22.',
+      '<b>Core every week</b> — Hanging Knee Raise (Mon) + Pallof Press (Thu) stay in all 25 weeks.'
+    ]))
+    + programSection('Roadmap', roadmapTable(p, info, [
+      { label: 'Phase', cell: w => p.phaseFor(w) },
+      { label: 'Squat', cell: w => schemeCell(p.schemeFor(w, 'lower_a')) },
+      { label: 'Deadlift', cell: w => schemeCell(p.schemeFor(w, 'lower_b')) },
+      { label: 'Upper', cell: w => schemeCell(p.schemeFor(w, 'upper_a')) }
+    ]))
+    + programSection('Upper-body maintenance', programList([
+      '<b>Tuesday</b> — DB Bench or Push-Up · Pull-Up or Band Row · Face Pull',
+      '<b>Friday</b> — Barbell/DB Row · Incline or Landmine Press · DB Curl'
+    ]))
+    + programSection('Rules', programList([
+      'The long run is the priority every week — if something gives, it\'s a strength day, the upper add-on or an easy run, never the long run.',
+      'Loads (kg) are starting points — autoregulate by RPE on the day rather than forcing the number.',
+      'Missed session: resume where it lands, don\'t stack sessions to catch up.',
+      'Full plan, paces and fuel: <a href="race-plan.html" style="color:var(--brand)">Race Plan →</a>'
+    ]));
+  }
+  function hybridProgramHtml(p, info) {
+    return programSection('Status', programList([
+      'From 27 Oct the <b>Marathon Roadmap</b> replaces this block\'s Tue/Fri hybrid conditioning and its running. Mon/Thu lower strength carries over.'
+    ]))
+    + programSection('12-week roadmap', roadmapTable(p, info, [
+      { label: 'Block', cell: w => HYBRID_BLOCK_NAMES[w] },
+      { label: 'Squat', cell: w => schemeCell(p.schemeFor(w, 'lower_a')) },
+      { label: 'Deadlift', cell: w => schemeCell(p.schemeFor(w, 'lower_b')) },
+      { label: 'Bench', cell: w => schemeCell(p.schemeFor(w, 'upper_a')) },
+      { label: 'Row', cell: w => schemeCell(p.schemeFor(w, 'upper_b')) }
+    ]))
+    + programSection('Sessions', programList([
+      '<b>Mon · Lower, squat focus</b> — Back Squat · Romanian Deadlift 3×8 · DB Walking Lunge 3×10/leg · Standing Calf Raise 3×15 · Hanging Knee Raise 3×12',
+      '<b>Thu · Lower, hinge/unilateral</b> — Deadlift 3×5 · Single-Leg RDL 3×10/leg · Hip Thrust 3×12 · DB Step-Up 3×10/leg · Pallof Press 3×12/side',
+      '<b>Tue · Hybrid A</b> (superseded) — DB Bench + Weighted Pull-Up 4×6–10, EMOM conditioning, Farmer\'s/Sandbag Carry finisher',
+      '<b>Fri · Hybrid B</b> (superseded) — Row + Front/Goblet Squat 4×8–10, AMRAP conditioning, Sled Push/Pull finisher',
+      '<b>Week 12 · The Hybrid Mile</b> — for time: 1km row/bike, 20 thrusters, 20 KB swings, 400m run, 20 burpees, 1km row/bike'
+    ]))
+    + programSection('How to use this', programList([
+      'RPE 7 = 3 reps left · RPE 8 = 2 left · RPE 9 = 1 left.',
+      'Add 2.5–5 kg on the main lift once the top of the rep range is hit on every set with clean form. Hold if reps are missed two sessions in a row.',
+      'Loads are from an RTS reps×RPE chart off squat 190 / deadlift 190 / bench 100 kg. Bench is barbell-equivalent; the row has no 1RM, so it stays RPE-based.',
+      'Face pulls + band external rotations, 2×15 each, as a warm-up before pressing.'
+    ]));
+  }
+  function summerProgramHtml(p, info) {
+    return programSection('Archived', programList(['Ran 6 Jul – 27 Sep 2026. Kept for reference — it no longer drives your targets.']))
+      + programSection('Why it was built this way', programList([
+        '<b>Lower A/B on Monday &amp; Thursday</b> — Monday gets fresh legs for the heaviest squat work; Thursday is deliberately moderate since Wednesday\'s run adds some fatigue.',
+        '<b>Upper A/B on Tuesday &amp; Friday</b> — low interference with running, Friday\'s pull focus keeps legs fresh into the weekend long run.',
+        '<b>Shoulder care is built in, not just avoided</b> — face pulls + band external rotations every Upper session, no exceptions; overhead pressing swapped for landmine/low-incline work.',
+        '<b>Deload weeks (4, 8, 12) aren\'t optional</b> — six training days on a calorie deficit only works long-term with real recovery built in.'
+      ]))
+      + programSection('12-week roadmap', roadmapTable(p, info, [
+        { label: 'Block', cell: w => p.schemeFor(w).block },
+        { label: 'Main lift', cell: w => schemeCell(p.schemeFor(w)) },
+        { label: 'RPE', cell: w => p.schemeFor(w).rpe }
+      ]))
+      + programSection('Shoulder care protocol', programList([
+        'No barbell overhead pressing or behind-neck work — landmine press + low-incline DB press cover pressing volume with far less strain.',
+        'Face pulls + band external rotations, twice a week (Upper A &amp; Upper B), without exception.',
+        'Pre-press warm-up every time: 2×15 light band external rotations + 2×15 band pull-aparts + arm circles.',
+        'Pain-free range only on bench/press variations — reduce load or range before reducing quality.',
+        'If the ache hasn\'t eased in 2–3 weeks, or gets worse, get it looked at by a physio.'
+      ]))
+      + programSection('How to use this', programList([
+        'RPE: 7 = could do 3 more reps · 8 = could do 2 more · 9 = could do 1 more.',
+        'Add load on the main lift only once you hit the top of the rep range on every set with clean form. Accessories: add a rep before adding load.',
+        'Missed a session? Resume where it lands — don\'t stack sessions to catch up.',
+        'Week 12 retest: re-run your 5km time trial and check main lift numbers against week 1.'
+      ]));
+  }
+  const PROGRAM_VIEWS = { 'marathon-2027': marathonProgramHtml, 'hybrid-2026': hybridProgramHtml, 'summer-2026': summerProgramHtml };
+
   function renderProgram() {
-    const info = programWeekInfo();
+    const p = selectedProgram();
+    const info = programWeekInfo(null, p);
+    $('programTitle').textContent = p.name;
     $('programWeekBadge').textContent = programBadgeText(info);
-
-    const roadmapRows = [];
-    PROGRAM.blocks.forEach(b => {
-      b.weeks.forEach(w => {
-        roadmapRows.push({ w, block: b.block, sets: b.sets, repMin: b.repMin, repMax: b.repMax, rpe: b.rpe, deload: b.deload, current: w === info.week && info.status === 'active' });
-      });
-    });
-    const roadmapHtml = '<div class="po-roadmap-scroll"><table class="po-roadmap-table">'
-      + '<tr><th>Wk</th><th>Block</th><th>Main lift</th><th>RPE</th></tr>'
-      + roadmapRows.map(r =>
-          '<tr class="' + (r.deload ? 'deload' : '') + '"' + (r.current ? ' style="outline:1px solid var(--brand)"' : '') + '>'
-          + '<td>' + r.w + (r.current ? ' ←' : '') + '</td><td>' + escape(r.block) + '</td>'
-          + '<td>' + r.sets + '×' + (r.repMin === r.repMax ? r.repMin : (r.repMin + '–' + r.repMax)) + '</td>'
-          + '<td>' + escape(r.rpe) + '</td></tr>'
-        ).join('')
-      + '</table></div>';
-
-    $('programBody').innerHTML =
-      '<div class="po-program-section"><h4>Why it\'s built this way</h4><ul class="po-program-list">'
-      + '<li><b>Lower A/B on Monday &amp; Thursday</b> — Monday gets fresh legs for the heaviest squat work; Thursday is deliberately moderate since Wednesday\'s run adds some fatigue.</li>'
-      + '<li><b>Upper A/B on Tuesday &amp; Friday</b> — low interference with running, Friday\'s pull focus keeps legs fresh into the weekend long run.</li>'
-      + '<li><b>Shoulder care is built in, not just avoided</b> — face pulls + band external rotations every Upper session, no exceptions; overhead pressing swapped for landmine/low-incline work.</li>'
-      + '<li><b>Deload weeks (4, 8, 12) aren\'t optional</b> — six training days on a calorie deficit only works long-term with real recovery built in.</li>'
-      + '</ul></div>'
-      + '<div class="po-program-section"><h4>12-week roadmap</h4>' + roadmapHtml + '</div>'
-      + '<div class="po-program-section"><h4>Shoulder care protocol</h4><ul class="po-program-list">'
-      + '<li>No barbell overhead pressing or behind-neck work — landmine press + low-incline DB press cover pressing volume with far less strain.</li>'
-      + '<li>Face pulls + band external rotations, twice a week (Upper A &amp; Upper B), without exception.</li>'
-      + '<li>Pre-press warm-up every time: 2×15 light band external rotations + 2×15 band pull-aparts + arm circles.</li>'
-      + '<li>Pain-free range only on bench/press variations — reduce load or range before reducing quality.</li>'
-      + '<li>If the ache hasn\'t eased in 2–3 weeks, or gets worse, get it looked at by a physio.</li>'
-      + '</ul></div>'
-      + '<div class="po-program-section"><h4>How to use this</h4><ul class="po-program-list">'
-      + '<li>RPE: 7 = could do 3 more reps · 8 = could do 2 more · 9 = could do 1 more.</li>'
-      + '<li>Add load on the main lift only once you hit the top of the rep range on every set with clean form. Accessories: add a rep before adding load.</li>'
-      + '<li>Missed a session? Resume where it lands — don\'t stack sessions to catch up.</li>'
-      + '<li>Week 12 retest: re-run your 5km time trial and check main lift numbers against week 1. Strength and speed can improve while the scale moves slowly — treat the scale as one input, not the whole picture.</li>'
-      + '</ul></div>';
+    const options = PROGRAMS.map(q => '<option value="' + q.id + '"' + (q.id === p.id ? ' selected' : '') + '>'
+      + escape(q.name + ' · ' + q.dates + (q.archived ? ' (archived)' : '')) + '</option>').join('');
+    $('programBody').innerHTML = '<select class="po-ex-select" id="programSelect" aria-label="Program">' + options + '</select>'
+      + PROGRAM_VIEWS[p.id](p, info);
   }
 
   // This week's target — shown for every exercise. The 4 main lifts
@@ -2034,15 +2208,26 @@ img, video, canvas, svg { max-width: 100%; }
     const base = state.exercises.find(e => e.id === ex.id);
     if (base && base.isMainLift) {
       const info = programWeekInfo();
-      if (info.status === 'active' && info.scheme) {
+      const raw = mainLiftScheme(base.day);
+      if (raw && raw.off) {
+        section.style.display = '';
+        $('weekTargetWrap').innerHTML = '<div class="po-week-target">'
+          + '<div><div class="po-week-target-main">Not in the plan this week</div>'
+          + '<div class="po-week-target-sub">Week ' + info.week + ' · ' + escape(raw.note) + '</div></div>'
+          + '<span class="po-week-target-badge">' + escape(raw.block) + '</span>'
+          + '</div>';
+        return;
+      }
+      if (raw) {
         section.style.display = '';
         const override = todaysReadinessOverride();
-        const s = override ? applyReadinessToScheme(info.scheme, override.tier) : info.scheme;
-        const repTxt = s.repMin === s.repMax ? s.repMin : (s.repMin + '–' + s.repMax);
+        const s = override ? applyReadinessToScheme(raw, override.tier) : raw;
+        const repTxt = ex.repMin === ex.repMax ? ex.repMin : (ex.repMin + '–' + ex.repMax);
+        const setsTxt = s.readinessAdjusted ? s.sets : (s.setsLabel || s.sets);
         $('weekTargetWrap').innerHTML = '<div class="po-week-target">'
-          + '<div><div class="po-week-target-main">' + s.sets + ' sets × ' + repTxt + ' reps @ RPE ' + escape(s.rpe) + '</div>'
-          + '<div class="po-week-target-sub">Week ' + info.week + ' · ' + escape(s.block) + (s.readinessAdjusted ? ' · recovery-adjusted' : '') + '</div></div>'
-          + '<span class="po-week-target-badge' + (s.deload ? ' deload' : (s.readinessAdjusted ? ' readiness' : '')) + '">' + (s.deload ? 'Deload' : (s.readinessAdjusted ? 'Adjusted' : escape(s.block))) + '</span>'
+          + '<div><div class="po-week-target-main">' + setsTxt + ' sets × ' + repTxt + ' reps @ RPE ' + escape(s.rpe) + (s.kg ? ' · ' + escape(s.kg) + ' kg' : '') + '</div>'
+          + '<div class="po-week-target-sub">Week ' + info.week + ' · ' + escape(s.block) + (s.note ? ' · ' + escape(s.note) : '') + (s.readinessAdjusted ? ' · recovery-adjusted' : '') + '</div></div>'
+          + '<span class="po-week-target-badge' + (s.deload ? ' deload' : (s.readinessAdjusted ? ' readiness' : '')) + '">' + (s.deload ? 'Deload' : (s.readinessAdjusted ? 'Adjusted' : escape(s.block.split(' · ').pop()))) + '</span>'
           + '</div>';
         return;
       }
@@ -2284,6 +2469,11 @@ img, video, canvas, svg { max-width: 100%; }
     body.style.display = open ? 'none' : 'flex';
     body.style.flexDirection = 'column';
     toggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+  });
+  $('programBody').addEventListener('change', e => {
+    if (e.target.id !== 'programSelect') return;
+    try { localStorage.setItem(PROGRAM_KEY, e.target.value); } catch (err) {}
+    renderAll();
   });
   $('programToggle').addEventListener('click', () => {
     const body = $('programBody');
