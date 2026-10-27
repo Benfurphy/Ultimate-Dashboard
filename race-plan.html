@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0C0C12" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Patron" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+
+<title>Race Plan · Chasing Legendary Status</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("patron_theme")||"nocturne");}catch(e){document.documentElement.setAttribute("data-theme","nocturne");}</script>
+
+<link rel="stylesheet" href="theme.css" />
+
+<style>
+  .shell { max-width: 760px; }
+  .stack { display:flex; flex-direction:column; gap: var(--space-4); }
+
+  .badge { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:4px 10px; border-radius:var(--radius-pill); background:var(--brand-soft); border:1px solid var(--brand-line); color:var(--brand); align-self:flex-start; }
+  .badge.deload { background:var(--warn-soft); border-color:var(--warn-line); color:var(--warn); }
+  .badge.race { background:var(--pos-soft); border-color:var(--pos-line); color:var(--pos); }
+  .badge.muted { background:var(--surface); border-color:var(--border); color:var(--muted); }
+  .cardHead { display:flex; align-items:center; justify-content:space-between; gap:var(--space-3); flex-wrap:wrap; }
+
+  .raceGrid { display:grid; grid-template-columns:1fr 1fr; gap: var(--space-3); }
+  @media (max-width:560px) { .raceGrid { grid-template-columns:1fr; } }
+  .box { padding: var(--space-4); border:1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); min-width:0; }
+  .box.now { border-color: var(--brand-line); background: var(--brand-soft); }
+  .label { font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .big { font-family:var(--font-display); font-weight:600; font-size:var(--text-2xl); letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+  .big small { font-size:var(--text-sm); color:var(--muted); font-weight:500; margin-left:4px; }
+  .body { font-size:14px; font-weight:600; line-height:1.45; }
+  .meta { font-family:var(--font-mono); font-size:11px; color:var(--muted); margin-top:6px; line-height:1.5; }
+
+  .exList { list-style:none; margin:var(--space-2) 0 0; padding:0; }
+  .exList li { display:flex; justify-content:space-between; gap:var(--space-3); padding:8px 0; border-bottom:1px solid var(--border); font-size:14px; }
+  .exList li:last-child { border-bottom:0; }
+  .exList .val { font-family:var(--font-mono); font-size:12px; color:var(--brand); text-align:right; }
+  .exList li.main { font-weight:700; }
+
+  .dayRow { display:grid; grid-template-columns:44px 1fr auto; gap:var(--space-3); align-items:baseline; padding:9px 0; border-bottom:1px solid var(--border); font-size:13.5px; }
+  .dayRow:last-child { border-bottom:0; }
+  .dayRow .d { font-family:var(--font-mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .dayRow .x { font-family:var(--font-mono); font-size:12px; color:var(--brand); white-space:nowrap; }
+  .dayRow.today .d { color:var(--brand); font-weight:700; }
+  .dayRow.today { font-weight:700; }
+
+  .phaseHead { font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:var(--space-4) 0 var(--space-2); }
+  .phaseHead:first-child { margin-top:0; }
+  .lr { display:grid; grid-template-columns:86px 1fr 74px; gap:var(--space-3); align-items:center; padding:5px 0; font-size:12px; }
+  .lr .wk { font-family:var(--font-mono); color:var(--muted); white-space:nowrap; }
+  .lr .km { font-family:var(--font-mono); text-align:right; white-space:nowrap; font-weight:600; }
+  .lr .track { height:10px; border-radius:5px; background:var(--track); overflow:hidden; }
+  .lr .fill { height:100%; border-radius:5px; background:var(--brand); opacity:.75; }
+  .lr.deload .fill { background:var(--warn); }
+  .lr.race .fill { background:var(--pos); opacity:1; }
+  .lr.past { opacity:.45; }
+  .lr.current { background:var(--brand-soft); border-radius:6px; padding:5px 6px; margin:0 -6px; }
+  .lr.current .wk, .lr.current .km { color:var(--brand); }
+  .lrNote { grid-column:2 / -1; font-size:11px; color:var(--muted); margin-top:-2px; }
+  .legend { display:flex; gap:var(--space-4); flex-wrap:wrap; font-family:var(--font-mono); font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+
+  .zoneRow { display:flex; gap:var(--space-2); flex-wrap:wrap; }
+  .zoneChip { display:flex; flex-direction:column; gap:2px; padding:8px 12px; border-radius:var(--radius-md); background:var(--surface); border:1px solid var(--border); flex:1; min-width:120px; }
+  .zoneChip .zN { font-family:var(--font-display); font-weight:600; font-size:var(--text-base); font-variant-numeric:tabular-nums; }
+  .zoneChip .zL { font-family:var(--font-mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+
+  .tbl { width:100%; border-collapse:collapse; font-size:13px; }
+  .tbl th { text-align:left; font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:500; padding:6px 8px 6px 0; border-bottom:1px solid var(--border); }
+  .tbl td { padding:8px 8px 8px 0; border-bottom:1px solid var(--border); vertical-align:top; }
+  .tbl tr:last-child td { border-bottom:0; }
+  .tbl td.n { font-family:var(--font-mono); white-space:nowrap; }
+  .tbl tr.now td { color:var(--brand); font-weight:700; }
+  .tblWrap { overflow-x:auto; }
+
+  .bullets { margin:0; padding-left:18px; font-size:13.5px; line-height:1.55; color:var(--muted-strong); }
+  .bullets li { margin:4px 0; }
+  .note { font-size:12px; color:var(--muted); line-height:1.5; }
+
+  details.card > summary { list-style:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+  details.card > summary::-webkit-details-marker { display:none; }
+  details.card > summary::after { content:'+'; font-family:var(--font-mono); color:var(--muted); font-size:18px; }
+  details.card[open] > summary::after { content:'−'; }
+</style>
+</head>
+<body>
+<main class="page grain-overlay">
+  <div class="shell">
+
+    <header class="header">
+      <div>
+        <h1 class="title">Race Plan</h1>
+        <p class="subtitle">Bendigo Half → Ballarat Marathon</p>
+      </div>
+      <div class="headerControls">
+        <a class="backLink" href="index.html">← Dashboard</a>
+        <span id="themeSeg"></span>
+      </div>
+    </header>
+
+    <div id="app" class="stack"></div>
+
+  </div>
+</main>
+
+<script src="theme.js"></script>
+<script>
+document.getElementById('themeSeg').innerHTML = Patron.switcherHtml();
+
+/* ============================================================
+ * The plan — Ben's combined export (Hybrid Performance Block +
+ * Marathon Roadmap, generated 2026-10-27). Kept verbatim so a new
+ * export can be pasted straight over it.
+ * ============================================================ */
+const PLAN = {
+  "meta": {
+    "generatedAt": "2026-10-27",
+    "athlete": "Ben",
+    "notes": "Combined export of Ben's Hybrid Performance Block (strength/running, Oct 2026-Jan 2027) and Marathon Roadmap (Oct 2026-Apr 2027, superseding the Hybrid Block's running progression and Tue/Fri conditioning from 27 Oct 2026 onward). Distances in km, paces in min:sec/km, weights in kg."
+  },
+  "athlete": {
+    "age": 36,
+    "heightCm": 178,
+    "weightKg": 80.8,
+    "goal": "Finish Bendigo Half Marathon (28 Feb 2027) and Ballarat Marathon (18 Apr 2027); performance/hybrid focus, not weight loss",
+    "running": {
+      "current5k": { "time": "22:48", "paceMinPerKm": "4:34", "priorBaseline5k": "26:00" },
+      "provenHalfMarathon": {
+        "time": "1:58:00",
+        "paceMinPerKm": "5:35",
+        "dateApprox": "2026-09-15",
+        "recoveryNotes": "Recovered fine; did some extra running since, outside prescribed sessions"
+      }
+    },
+    "oneRepMaxesKg": {
+      "squat": 190,
+      "deadlift": 190,
+      "benchPress": 100,
+      "dateProvided": "2026-10-27",
+      "notes": "As given by Ben. Used with an RTS-style reps x RPE -> %1RM chart to generate prescribedLoadsKg below. Treat as a starting point - autoregulate by actual RPE on the day, not by forcing the calculated number."
+    },
+    "shoulder": "Right rotator cuff niggle from earlier block is resolved; maintenance-only care (face pulls / band external rotation) going forward",
+    "preferences": {
+      "wantsToKeepUpperBodyVolume": true
+    }
+  },
+
+  "nutrition": {
+    "basis": "Mifflin-St Jeor, 36y/178cm/80.8kg",
+    "bmrKcal": 1745,
+    "tdeeKcal": 3000,
+    "targetIntakeKcal": 3000,
+    "goalType": "maintenance (not a deficit) - fueling performance, not weight loss",
+    "macrosDaily": { "proteinG": 180, "fatG": 80, "carbsG": 385 },
+    "proteinPerKg": 2.2,
+    "guidance": [
+      "Track 7-day rolling average bodyweight; target is roughly flat, not falling",
+      "If 2-3 week average drops >0.2-0.3kg/week, add 150-200 kcal (carbs first)",
+      "If climbing steadily, trim 100-150 kcal, carbs first",
+      "Protein stays ~180g/day non-negotiable",
+      "Shift extra carbs to highest-output days (hybrid/long-run/race days)",
+      "Sleep 7-9h required given training volume",
+      "During marathon prep: nudge carbs +50-100g/day in peak long-run weeks and 2-3 days before each race (simple carb-load, not a diet change)"
+    ],
+    "raceFueling": {
+      "duringRun": "30-60g carbs/hour via gels/chews/sports drink, starting ~45min in then every 20-30min, for any run over ~75-90min",
+      "practiceRule": "Test exact products/timing in training long runs (from first long run over ~16km) - never for the first time on race day",
+      "hydration": "Carry water or plan a route past a tap/bottle for training runs over 75-90min; both races have aid stations"
+    }
+  },
+
+  "hybridPerformanceBlock": {
+    "title": "Hybrid Performance Block",
+    "startDate": "2026-10-19",
+    "endDate": "2027-01-10",
+    "lengthWeeks": 12,
+    "weeklySplit": {
+      "Mon": "Lower - Squat focus (strength)",
+      "Tue": "Hybrid A (strength couplet + conditioning + finisher) [superseded by Marathon Roadmap from 2026-10-27]",
+      "Wed": "Run - High intensity [superseded by Marathon Roadmap from 2026-10-27]",
+      "Thu": "Lower - Hinge/unilateral (strength)",
+      "Fri": "Hybrid B (strength couplet + conditioning + finisher) [superseded by Marathon Roadmap from 2026-10-27]",
+      "SatOrSun": "Long run [superseded by Marathon Roadmap from 2026-10-27]",
+      "SunOrSat": "Full rest"
+    },
+    "strengthSessions": {
+      "mondayLowerSquatFocus": [
+        { "exercise": "Back Squat (main lift)", "progression": "Week1: confirm working weight @RPE7 4x6. Block1: 4x6@RPE7. Block2: 4x5@RPE7-8. Block3: 5x3@RPE8-9" },
+        { "exercise": "Romanian Deadlift", "sets": "3x8" },
+        { "exercise": "DB Walking Lunge", "sets": "3x10/leg" },
+        { "exercise": "Standing Calf Raise", "sets": "3x15" },
+        { "exercise": "Core: Hanging Knee Raise", "sets": "3x12" }
+      ],
+      "thursdayLowerHingeUnilateral": [
+        { "exercise": "Trap Bar or Conventional Deadlift", "sets": "3x5 @RPE7, held constant all 12 weeks (lighter on deload weeks)" },
+        { "exercise": "Single-Leg RDL", "sets": "3x10/leg" },
+        { "exercise": "Hip Thrust", "sets": "3x12" },
+        { "exercise": "DB Step-Up", "sets": "3x10/leg" },
+        { "exercise": "Core: Pallof Press", "sets": "3x12/side" }
+      ],
+      "progressionRule": "Add 2.5-5kg on the main lift once top of rep range hit on every set with clean form. Hold weight if reps missed two sessions in a row."
+    },
+    "prescribedLoadsKg": {
+      "method": "RTS-style reps x RPE -> %1RM chart, rounded to nearest 2.5kg, from Ben's 1RMs (Squat 190kg, Deadlift 190kg, Bench 100kg). Starting-point numbers - autoregulate by feel/actual RPE on the day rather than forcing the number.",
+      "squatMonday": [
+        { "block": "1 (weeks 1-3)", "prescription": "4x6 @RPE7", "percent1RM": 76, "weightKg": 145 },
+        { "block": "deload (weeks 4, 8)", "prescription": "2x6, light", "percent1RM": "~60-65", "weightKg": "115-125 (use ~120)" },
+        { "block": "2 (weeks 5-7)", "prescription": "4x5 @RPE7-8", "percent1RM": "79-81", "weightKg": "150-155" },
+        { "block": "3 (weeks 9-11)", "prescription": "5x3 @RPE8-9", "percent1RM": "86-89", "weightKg": "162.5-170" },
+        { "block": "12 (test/deload)", "prescription": "Retest - light volume, then an actual top-set attempt", "note": "Don't pre-calculate this one; it's the day you find the new number." }
+      ],
+      "deadliftThursday": [
+        { "block": "all blocks (constant)", "prescription": "3x5 @RPE7", "percent1RM": 79, "weightKg": 150 },
+        { "block": "deload (weeks 4, 8, 12)", "prescription": "2x5, lighter", "percent1RM": "~63-65", "weightKg": "120-125" }
+      ],
+      "benchTuesdayHybridA": [
+        { "block": "1 (weeks 1-3)", "prescription": "4x6-8 @RPE7", "percent1RM": "71-76", "weightKg": "70-75" },
+        { "block": "deload (weeks 4, 8)", "prescription": "light", "percent1RM": "~60", "weightKg": "~60" },
+        { "block": "2 (weeks 5-7)", "prescription": "4x6 @RPE7-8", "percent1RM": "76-79", "weightKg": "75-80" },
+        { "block": "3 (weeks 9-11)", "prescription": "5x5 @RPE8-9", "percent1RM": "81-84", "weightKg": "80-85" }
+      ],
+      "benchNote": "Session is written as DB Bench Press. These numbers are barbell-equivalent - loading as two dumbbells, start ~10-15% lighter on combined weight and adjust by feel; if a barbell is available at home, load these numbers directly.",
+      "rowNote": "No 1RM given for the barbell/DB row (Friday Hybrid B) - keep that lift on its original RPE-based progression rather than a guessed number."
+    },
+    "hybridSessions": {
+      "tuesdayHybridA_EnginePress": {
+        "strengthCouplet": [
+          { "exercise": "Flat/Incline DB Bench Press", "progression": "4x6-8@RPE7 (Block1) -> 4x6@RPE7-8 (Block2) -> 5x5@RPE8-9 (Block3)" },
+          { "exercise": "Weighted Pull-Up (band-assisted if needed)", "sets": "4x6-10" }
+        ],
+        "conditioningExample_Block1": "EMOM 12min: Min1 12/10cal row or bike; Min2 10 KB swings + 10 box step-overs",
+        "finisher": "Farmer's Carry or Sandbag Carry, 3-4 rounds for distance/time, load/distance increases by block"
+      },
+      "fridayHybridB_EnginePullLegs": {
+        "strengthCouplet": [
+          { "exercise": "Barbell or DB Bent-Over Row", "progression": "4x6-8@RPE7 (Block1) -> 4x6@RPE7-8 (Block2) -> 5x5@RPE8-9 (Block3)" },
+          { "exercise": "Front Squat or Goblet Squat", "sets": "4x8-10" }
+        ],
+        "conditioningExample_Block1": "12min AMRAP: 10 Wall Balls/Thrusters + 10 Burpees + 200m run, repeat",
+        "finisher": "Sled Push/Pull (or weighted lunge medley if no sled), 3-4 rounds, load/distance increases by block"
+      },
+      "rotatorCuffMaintenance": "2x15 Face Pulls + 2x15 Band External Rotations as standing warm-up before Tuesday's press couplet. Barbell overhead pressing optional now that the shoulder has resolved."
+    },
+    "runningPlan": {
+      "paceZonesBasis": "22:48 5km (~4:34/km)",
+      "paceZones": { "easyMinPerKm": "5:28-6:01", "tempoMinPerKm": "4:45-4:59", "intervalMinPerKm": "4:12-4:26" },
+      "wednesdayHighIntensityByBlock": [
+        { "weeks": "1-3", "session": "6x3min hard/2min jog -> 5x4min hard/2min jog -> 6x3min hard/90s jog, descending rest" },
+        { "weeks": "4 (deload)", "session": "20min continuous easy run, no intervals" },
+        { "weeks": "5-7", "session": "10x400m interval pace/75s jog -> 25min continuous tempo -> 6x1km threshold/2min jog" },
+        { "weeks": "8 (deload)", "session": "25min easy" },
+        { "weeks": "9-11", "session": "12x400m interval/60s jog -> 30min tempo -> 8x800m interval/90s jog" },
+        { "weeks": "12 (test)", "session": "5km all-out time trial, compare to 22:48 baseline" }
+      ],
+      "longRunByWeek": [
+        { "week": 1, "distanceKm": 8 },
+        { "week": 2, "distanceKm": 9 },
+        { "week": 3, "distanceKm": 10 },
+        { "week": 4, "distanceKm": 6, "deload": true },
+        { "week": 5, "distanceKm": "10 +1km moderate" },
+        { "week": 6, "distanceKm": 11 },
+        { "week": 7, "distanceKm": "11 +2km moderate" },
+        { "week": 8, "distanceKm": 6, "deload": true },
+        { "week": 9, "distanceKm": "10 +3 bodyweight stations" },
+        { "week": 10, "distanceKm": "11 +stations", "notes": "Christmas week" },
+        { "week": 11, "distanceKm": "10 +3x5min surges @threshold" },
+        { "week": 12, "distanceKm": "6-7", "deload": true }
+      ]
+    },
+    "roadmap": [
+      { "week": 1, "dates": "19-25 Oct", "block": "Reset", "mainLiftProgression": "4x6 @RPE7 (confirm weight)", "hybridConditioning": "EMOM 12min", "wedRun": "6x3min hard", "longRun": "8km" },
+      { "week": 2, "dates": "26 Oct-1 Nov", "block": "Reset", "mainLiftProgression": "4x6 @RPE7", "hybridConditioning": "EMOM 12min", "wedRun": "5x4min hard", "longRun": "9km" },
+      { "week": 3, "dates": "2-8 Nov", "block": "Reset", "mainLiftProgression": "4x6 @RPE7", "hybridConditioning": "AMRAP 12min", "wedRun": "6x3min hard", "longRun": "10km" },
+      { "week": 4, "dates": "9-15 Nov", "block": "Deload", "mainLiftProgression": "2x6 light", "hybridConditioning": "EMOM 8min, light", "wedRun": "20min easy", "longRun": "6km" },
+      { "week": 5, "dates": "16-22 Nov", "block": "Build", "mainLiftProgression": "4x6 @RPE7-8", "hybridConditioning": "EMOM 16min", "wedRun": "10x400m", "longRun": "10km +1km mod" },
+      { "week": 6, "dates": "23-29 Nov", "block": "Build", "mainLiftProgression": "4x6 @RPE7-8", "hybridConditioning": "AMRAP 14min", "wedRun": "25min tempo", "longRun": "11km" },
+      { "week": 7, "dates": "30 Nov-6 Dec", "block": "Build", "mainLiftProgression": "4x6 @RPE7-8", "hybridConditioning": "EMOM 16min, heavier", "wedRun": "6x1km threshold", "longRun": "11km +2km mod" },
+      { "week": 8, "dates": "7-13 Dec", "block": "Deload", "mainLiftProgression": "2x6 light", "hybridConditioning": "AMRAP 10min, light", "wedRun": "25min easy", "longRun": "6km" },
+      { "week": 9, "dates": "14-20 Dec", "block": "Peak", "mainLiftProgression": "5x5 @RPE8-9", "hybridConditioning": "AMRAP 18min", "wedRun": "12x400m", "longRun": "10km +stations" },
+      { "week": 10, "dates": "21-27 Dec", "block": "Peak", "mainLiftProgression": "5x5 @RPE8-9", "hybridConditioning": "AMRAP 18min", "wedRun": "30min tempo", "longRun": "11km +stations", "notes": "Christmas week" },
+      { "week": 11, "dates": "28 Dec-3 Jan", "block": "Peak", "mainLiftProgression": "5x5 @RPE8-9", "hybridConditioning": "AMRAP 20min", "wedRun": "8x800m", "longRun": "10km +surges", "notes": "New Year week" },
+      { "week": 12, "dates": "4-10 Jan", "block": "Test/Deload", "mainLiftProgression": "Retest lifts, light volume", "hybridConditioning": "Hybrid Benchmark Test", "wedRun": "5km time trial", "longRun": "6-7km easy" }
+    ],
+    "week12HybridBenchmarkTest": {
+      "name": "The Hybrid Mile",
+      "forTime": [
+        "1km Row or Bike",
+        "20 Thrusters or Wall Balls (moderate load)",
+        "20 Kettlebell Swings",
+        "400m Run",
+        "20 Burpees",
+        "1km Row or Bike"
+      ],
+      "alongside": ["5km time trial vs 22:48 baseline", "Main lift check: Monday squat and Friday row, light volume"]
+    },
+    "rules": [
+      "RPE scale: RPE7 = 3 reps left, RPE8 = 2 reps left, RPE9 = 1 rep left",
+      "Progress main lift only once top of rep range hit on every set with clean form",
+      "Hybrid equipment is substitutable - pattern matters more than exact implement",
+      "Missed session: resume schedule where it lands, don't stack sessions to catch up",
+      "Full rest day should be genuinely restful - no training",
+      "Week 12 retest: Hybrid Mile + 5km time trial + main lift sanity check",
+      "Long run day floats Saturday/Sunday as preferred; the other weekend day stays true rest"
+    ]
+  },
+
+  "marathonRoadmap": {
+    "title": "Marathon Roadmap",
+    "verdict": "Enough time for the half (18 weeks) with a stronger base than first assumed (proven 1:58 half marathon 6 weeks before plan start); the full marathon 7 weeks after the half is tight but workable because the only goal is finishing, not time.",
+    "generatedFrom": "2026-10-27",
+    "races": {
+      "halfMarathon": { "name": "Bendigo Half Marathon", "date": "2027-02-28", "distanceKm": 21.1 },
+      "fullMarathon": { "name": "Ballarat Marathon", "date": "2027-04-18", "distanceKm": 42.2 }
+    },
+    "supersedes": "From 2026-10-27 onward, this replaces the Hybrid Performance Block's Tue/Fri hybrid conditioning and its running progression (Wed intervals + long run). Mon/Thu lower-body strength carries over, then tapers down as mileage climbs.",
+    "upperBodyMaintenance": {
+      "reason": "Ben asked to keep some upper-body training volume through the marathon build",
+      "whenTueFri": "15-20min, RPE6-7, 2-3 sets each, after the easy run",
+      "tuesday": ["DB Bench or Push-Up", "Pull-Up or Band Row", "Face Pull"],
+      "friday": ["Barbell/DB Row", "Incline or Landmine Press", "DB Curl"],
+      "taperOut": "Drop entirely from Week 22 of the plan (bridge-to-full phase) onward"
+    },
+
+    "phases": [
+      {
+        "id": 1,
+        "name": "Base Build",
+        "startDate": "2026-10-26",
+        "endDate": "2027-01-10",
+        "lengthWeeks": 11,
+        "goal": "Turn two runs/week into four; reactivate the long run back toward and then past where it was six weeks ago, without losing lower-body strength.",
+        "weeklyStructure": {
+          "Mon": "Lower strength - squat focus (as Hybrid Block)",
+          "Tue": "Easy run 30-40min + upper-body maintenance",
+          "Wed": "Steady/moderate run 30-45min (occasional strides, no hard intervals yet)",
+          "Thu": "Lower strength - hinge/unilateral (as Hybrid Block)",
+          "Fri": "Easy run 30-40min + upper-body maintenance",
+          "SatOrSun": "Long run (progressive)",
+          "SunOrSat": "Full rest"
+        },
+        "strengthNote": "Mon/Thu loads follow hybridPerformanceBlock.prescribedLoadsKg - same blocks, same weeks (this phase runs 2026-10-26 to 2027-01-10, overlapping the Hybrid Block's own 12 weeks).",
+        "longRunByWeek": [
+          { "week": 1, "dates": "2026-10-26/2026-11-01", "distanceKm": 13 },
+          { "week": 2, "dates": "2026-11-02/2026-11-08", "distanceKm": 14 },
+          { "week": 3, "dates": "2026-11-09/2026-11-15", "distanceKm": 15 },
+          { "week": 4, "dates": "2026-11-16/2026-11-22", "distanceKm": 10, "deload": true },
+          { "week": 5, "dates": "2026-11-23/2026-11-29", "distanceKm": 16 },
+          { "week": 6, "dates": "2026-11-30/2026-12-06", "distanceKm": 17 },
+          { "week": 7, "dates": "2026-12-07/2026-12-13", "distanceKm": 18 },
+          { "week": 8, "dates": "2026-12-14/2026-12-20", "distanceKm": 11, "deload": true },
+          { "week": 9, "dates": "2026-12-21/2026-12-27", "distanceKmRange": [14, 16], "notes": "Christmas week - flexible" },
+          { "week": 10, "dates": "2026-12-28/2027-01-03", "distanceKmRange": [16, 18], "notes": "New Year - flexible" },
+          { "week": 11, "dates": "2027-01-04/2027-01-10", "distanceKm": 19, "notes": "End of phase - already past half-marathon shape" }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Half-Specific",
+        "startDate": "2027-01-11",
+        "endDate": "2027-02-28",
+        "lengthWeeks": 7,
+        "goal": "Push the long run clearly past half-marathon distance before race day, then taper and race Bendigo under control.",
+        "weeklyStructure": {
+          "Mon": "Lower strength - trimmed to main lift only, lighter",
+          "Tue": "Easy run 30-40min + upper-body maintenance",
+          "Wed": "Tempo or race-pace run - continuous tempo or blocks at half-marathon effort",
+          "Thu": "Lower strength - trimmed to main lift only, lighter",
+          "Fri": "Easy run 30-40min + upper-body maintenance",
+          "SatOrSun": "Long run (progressive, some with race-pace finish)",
+          "SunOrSat": "Rest"
+        },
+        "strengthNote": "Mon/Thu trimmed to main lift only: Squat continues ~150-155kg (Block2 range), taper to ~145-150kg by Week 17; Deadlift stays ~150kg, dropping to ~120-125kg on the Week 14 deload and Week 16-17 taper.",
+        "longRunByWeek": [
+          { "week": 12, "dates": "2027-01-11/2027-01-17", "distanceKm": 20 },
+          { "week": 13, "dates": "2027-01-18/2027-01-24", "distanceKm": 21, "notes": "Matches race distance" },
+          { "week": 14, "dates": "2027-01-25/2027-01-31", "distanceKm": 14, "deload": true },
+          { "week": 15, "dates": "2027-02-01/2027-02-07", "distanceKm": 22, "notes": "Peak - past race distance" },
+          { "week": 16, "dates": "2027-02-08/2027-02-14", "distanceKm": 16, "notes": "Taper" },
+          { "week": 17, "dates": "2027-02-15/2027-02-21", "distanceKm": 12, "notes": "Taper, easy" },
+          { "week": 18, "dates": "2027-02-22/2027-02-28", "distanceKm": 21.1, "race": "Bendigo Half Marathon, Sun 28 Feb 2027" }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Bridge to Full",
+        "startDate": "2027-03-01",
+        "endDate": "2027-04-18",
+        "lengthWeeks": 7,
+        "goal": "Recover off the half, then build the long run to a conservative peak before Ballarat. Works because the only target is finishing and strength is nearly parked.",
+        "weeklyStructure": {
+          "Mon": "Light strength (optional) - mobility/bodyweight; drop entirely from Week 22",
+          "Tue": "Easy run 30-40min + short upper-body maintenance (drop from Week 22)",
+          "Wed": "Steady run, easy-moderate only - no added intensity",
+          "Thu": "Rest or light strength",
+          "Fri": "Easy run 30-40min + short upper-body maintenance (drop from Week 22)",
+          "SatOrSun": "Long run (priority session of the week)",
+          "SunOrSat": "Rest"
+        },
+        "strengthNote": "Loaded barbell lower lifts are dropped in favor of light/bodyweight mobility work from Week 22 on - no specific kg prescribed in this phase; the long run is the priority.",
+        "longRunByWeek": [
+          { "week": 19, "dates": "2027-03-01/2027-03-07", "distanceKm": 12, "notes": "Recovery off the half, very easy", "deload": true },
+          { "week": 20, "dates": "2027-03-08/2027-03-14", "distanceKm": 20, "notes": "Resuming proven fitness, not rebuilding from scratch" },
+          { "week": 21, "dates": "2027-03-15/2027-03-21", "distanceKm": 24 },
+          { "week": 22, "dates": "2027-03-22/2027-03-28", "distanceKm": 27, "notes": "Upper-body maintenance and optional strength drop from here" },
+          { "week": 23, "dates": "2027-03-29/2027-04-04", "distanceKm": 30, "notes": "Peak long run, ~2.5 weeks out" },
+          { "week": 24, "dates": "2027-04-05/2027-04-11", "distanceKm": 17, "notes": "Taper, easy" },
+          { "week": 25, "dates": "2027-04-12/2027-04-18", "distanceKm": 42.2, "race": "Ballarat Marathon, Sun 18 Apr 2027" }
+        ]
+      }
+    ],
+
+    "raceDayPacing": {
+      "bendigoHalfMarathon": {
+        "date": "2027-02-28",
+        "approach": "Comfortably hard, not all-out - a pace you could hold a short conversation at, not a time trial",
+        "targetPaceMinPerKm": "5:10-5:35",
+        "context": "1:58:00 (~5:35/km) six weeks before plan start is the floor, not the target. This run also has to set you up for the Ballarat bridge, not wreck you for it."
+      },
+      "ballaratMarathon": {
+        "date": "2027-04-18",
+        "approach": "Start slower than feels necessary; walk breaks in the final 10-12km are a legitimate strategy, not a failure",
+        "targetPaceMinPerKm_first25to28km": "6:15-6:45",
+        "context": "Beyond the 30km peak long run is untrained territory for this build - normal for a first marathon on a short runway. Goal is to finish upright and glad you did it, not hit a number."
+      },
+      "bothRaceDays": [
+        "Don't try anything new on race morning - same breakfast, shoes, gels as training",
+        "Start at the back of your intended pace group - the first km always feels too slow, that's correct",
+        "Walking is a pacing tool, not a failure - e.g. 1min every 4-5km, or every aid station in the marathon"
+      ]
+    },
+
+    "rules": [
+      "The long run is the priority session every week - if something gives in a busy week, it's a strength day, the upper-body add-on, or an easy run, never the long run",
+      "Pace guidance is deliberately conservative - 5km speed is ahead of long-run durability; let long runs feel easy longer than seems necessary",
+      "Missed session: resume schedule where it lands - never stack long runs to catch up, that risks injury not just a missed session",
+      "Niggles get respected, not pushed through - a sore joint is worth a missed run, rarely worth a missed race",
+      "Re-check in after Bendigo (28 Feb) - how the half feels determines whether Phase 3's numbers need adjusting before the Ballarat build starts"
+    ]
+  }
+};
+
+/* ============================================================
+ * Helpers
+ * ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// The export writes ranges/sets with ASCII hyphens and "x"; show them typographically.
+function pretty(s){ return esc(s).replace(/(\d)-(\d)/g, '$1–$2').replace(/(\d)x(\d)/g, '$1×$2').replace(/ - /g, ' — ').replace(/-&gt;/g, '→'); }
+function dayStart(d){ const t = new Date(d); t.setHours(0,0,0,0); return t; }
+function parseKey(k){ return new Date(k + 'T00:00:00'); }
+function weekOf(startKey, d){
+  const days = Math.floor((dayStart(d) - parseKey(startKey)) / 86400000);
+  return days < 0 ? 0 : Math.floor(days / 7) + 1;
+}
+function daysUntil(key){ return Math.round((parseKey(key) - dayStart(new Date())) / 86400000); }
+function fmtShort(key){ return parseKey(key).toLocaleDateString([], { day:'numeric', month:'short' }); }
+
+const RM = PLAN.marathonRoadmap;
+const HB = PLAN.hybridPerformanceBlock;
+const LOADS = HB.prescribedLoadsKg;
+const PLAN_START = RM.phases[0].startDate; // Monday of week 1
+const TOTAL_WEEKS = RM.phases.reduce((n, p) => n + p.lengthWeeks, 0);
+const LONG_RUNS = RM.phases.flatMap(p => p.longRunByWeek.map(w => Object.assign({ phase: p }, w)));
+const RACES = [RM.races.halfMarathon, RM.races.fullMarathon];
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+function kmLabel(w){ return w.distanceKmRange ? w.distanceKmRange.join('–') + ' km' : w.distanceKm + ' km'; }
+function kmValue(w){ return w.distanceKmRange ? w.distanceKmRange[1] : w.distanceKm; }
+function phaseForWeek(wk){ return RM.phases.find(p => wk >= p.longRunByWeek[0].week && wk <= p.longRunByWeek[p.longRunByWeek.length-1].week) || null; }
+
+/* Mon/Thu main-lift loads for a given plan week. Phase 1 follows the
+ * Hybrid Block's own calendar (it started a week earlier, so its deloads
+ * land a week before the long-run deloads); Phase 2 uses the trimmed
+ * main-lift-only numbers; Phase 3 has no loaded lifts. */
+function strengthFor(wk, d){
+  if (wk <= 11) {
+    const hw = weekOf(HB.startDate, d);
+    const sq = hw <= 3 ? LOADS.squatMonday[0] : (hw === 4 || hw === 8) ? LOADS.squatMonday[1] : hw <= 7 ? LOADS.squatMonday[2] : hw <= 11 ? LOADS.squatMonday[3] : LOADS.squatMonday[4];
+    const dl = (hw === 4 || hw === 8 || hw === 12) ? LOADS.deadliftThursday[1] : LOADS.deadliftThursday[0];
+    return {
+      label: 'Hybrid block week ' + hw + ' · ' + (HB.roadmap[hw-1] ? HB.roadmap[hw-1].block : ''),
+      deload: hw === 4 || hw === 8 || hw === 12,
+      squat: { rx: sq.prescription, kg: sq.weightKg != null ? sq.weightKg + ' kg' : 'find the new number' },
+      deadlift: { rx: dl.prescription, kg: dl.weightKg + ' kg' },
+      full: true
+    };
+  }
+  if (wk <= 18) {
+    const taper = wk >= 16, deload = wk === 14;
+    return {
+      label: deload ? 'Deload week' : taper ? (wk === 18 ? 'Race week — keep it light or skip' : 'Taper') : 'Main lift only',
+      deload: deload || taper,
+      squat: { rx: 'Main lift only, lighter', kg: taper ? '~145–150 kg' : '~150–155 kg' },
+      deadlift: { rx: 'Main lift only, lighter', kg: (deload || taper) ? '120–125 kg' : '~150 kg' },
+      full: false
+    };
+  }
+  return null;
+}
+
+/* ============================================================
+ * Views
+ * ============================================================ */
+function racesHtml(){
+  return '<div class="raceGrid">' + RACES.map(r => {
+    const n = daysUntil(r.date);
+    const val = n > 0 ? n + '<small>days</small>' : n === 0 ? 'Race day' : 'Done ✓';
+    return '<div class="box"><div class="label">' + esc(r.name) + ' · ' + r.distanceKm + ' km</div>'
+      + '<div class="big">' + val + '</div>'
+      + '<div class="meta">' + parseKey(r.date).toLocaleDateString([], { weekday:'short', day:'numeric', month:'short', year:'numeric' }) + '</div></div>';
+  }).join('') + '</div>';
+}
+
+function heroHtml(){
+  const now = new Date();
+  const wk = weekOf(PLAN_START, now);
+  let badge, body;
+  if (wk < 1) {
+    badge = '<span class="badge muted">starts ' + fmtShort(PLAN_START) + '</span>';
+    body = '<p class="cardTag">' + esc(RM.verdict) + '</p>';
+  } else if (wk > TOTAL_WEEKS) {
+    badge = '<span class="badge race">plan complete</span>';
+    body = '<p class="cardTag">Both races are done. Time for a recovery block — then a new plan.</p>';
+  } else {
+    const ph = phaseForWeek(wk), lr = LONG_RUNS.find(w => w.week === wk);
+    badge = '<span class="badge' + (lr.race ? ' race' : lr.deload ? ' deload' : '') + '">week ' + wk + '/' + TOTAL_WEEKS + ' · ' + esc(ph.name) + (lr.deload ? ' · deload' : '') + '</span>';
+    body = '<p class="cardTag">' + pretty(ph.goal) + '</p>';
+  }
+  return '<section class="card"><div class="cardHead"><span class="cardName">Countdown</span>' + badge + '</div>' + racesHtml() + body + '</section>';
+}
+
+function todayHtml(){
+  const now = new Date();
+  const wk = weekOf(PLAN_START, now);
+  if (wk < 1 || wk > TOTAL_WEEKS) return '';
+  const ph = phaseForWeek(wk), lr = LONG_RUNS.find(w => w.week === wk);
+  const dow = DAYS[(now.getDay() + 6) % 7];
+  const ub = RM.upperBodyMaintenance, st = strengthFor(wk, now);
+  let title, detail = '';
+
+  if (dow === 'Sat' || dow === 'Sun') {
+    title = lr.race ? 'Race week — ' + esc(lr.race) : 'Long run — ' + kmLabel(lr) + ' (Sat or Sun)';
+    detail = '<p class="cardTag">The other weekend day is ' + esc(ph.weeklyStructure.SunOrSat.toLowerCase()) + '. ' + pretty(ph.weeklyStructure.SatOrSun) + (lr.notes ? ' · ' + pretty(lr.notes) : '') + '.</p>';
+  } else {
+    title = pretty(ph.weeklyStructure[dow]);
+    if ((dow === 'Mon' || dow === 'Thu') && st) {
+      const lift = dow === 'Mon' ? st.squat : st.deadlift;
+      const liftName = dow === 'Mon' ? 'Back Squat' : 'Deadlift';
+      const accessories = st.full ? (dow === 'Mon' ? HB.strengthSessions.mondayLowerSquatFocus : HB.strengthSessions.thursdayLowerHingeUnilateral).slice(1) : [];
+      detail = '<ul class="exList"><li class="main"><span>' + liftName + ' · ' + pretty(lift.rx) + '</span><span class="val">' + pretty(lift.kg) + '</span></li>'
+        + accessories.map(e => '<li><span>' + pretty(e.exercise) + '</span><span class="val">' + pretty(e.sets) + '</span></li>').join('')
+        + '</ul><p class="note">' + esc(st.label) + '. Autoregulate by RPE on the day — these are starting points, not targets to force.</p>';
+    } else if ((dow === 'Tue' || dow === 'Fri') && wk < 22) {
+      const list = dow === 'Tue' ? ub.tuesday : ub.friday;
+      detail = '<ul class="exList">' + list.map(x => '<li><span>' + pretty(x) + '</span><span class="val">2–3 sets</span></li>').join('') + '</ul>'
+        + '<p class="note">Upper-body maintenance: ' + pretty(ub.whenTueFri) + '.</p>';
+    }
+  }
+  return '<section class="card"><div class="cardHead"><span class="cardName">Today</span><span class="badge muted">' + now.toLocaleDateString([], { weekday:'long', day:'numeric', month:'short' }) + '</span></div>'
+    + '<div class="body">' + title + '</div>' + detail + '</section>';
+}
+
+function weekHtml(){
+  const now = new Date();
+  const wk = weekOf(PLAN_START, now);
+  if (wk < 1 || wk > TOTAL_WEEKS) return '';
+  const ph = phaseForWeek(wk), lr = LONG_RUNS.find(w => w.week === wk);
+  const today = DAYS[(now.getDay() + 6) % 7];
+  const st = strengthFor(wk, now);
+  const rows = DAYS.map(d => {
+    let text, extra = '';
+    if (d === 'Sat') { text = ph.weeklyStructure.SatOrSun; extra = lr.race ? 'RACE' : kmLabel(lr); }
+    else if (d === 'Sun') text = ph.weeklyStructure.SunOrSat + ' (or long run, if Sat was rest)';
+    else text = ph.weeklyStructure[d];
+    if (d === 'Mon' && st) extra = st.squat.kg;
+    if (d === 'Thu' && st) extra = st.deadlift.kg;
+    return '<div class="dayRow' + (d === today ? ' today' : '') + '"><span class="d">' + d + '</span><span>' + pretty(text) + '</span><span class="x">' + pretty(extra) + '</span></div>';
+  }).join('');
+  return '<section class="card"><div class="cardHead"><span class="cardName">This week</span><span class="badge muted">' + fmtShort(lr.dates.split('/')[0]) + ' – ' + fmtShort(lr.dates.split('/')[1]) + '</span></div><div>' + rows + '</div>'
+    + (lr.notes ? '<p class="note">' + pretty(lr.notes) + '</p>' : '')
+    + '</section>';
+}
+
+function longRunsHtml(){
+  const wk = weekOf(PLAN_START, new Date());
+  const max = 42.2;
+  const body = RM.phases.map(p => '<div class="phaseHead">Phase ' + p.id + ' · ' + esc(p.name) + ' · ' + fmtShort(p.startDate) + ' – ' + fmtShort(p.endDate) + '</div>'
+    + p.longRunByWeek.map(w => {
+      const cls = (w.race ? ' race' : w.deload ? ' deload' : '') + (w.week === wk ? ' current' : w.week < wk ? ' past' : '');
+      return '<div class="lr' + cls + '"><span class="wk">W' + w.week + ' · ' + fmtShort(w.dates.split('/')[0]) + '</span>'
+        + '<span class="track"><span class="fill" style="display:block;width:' + (kmValue(w) / max * 100).toFixed(1) + '%"></span></span>'
+        + '<span class="km">' + kmLabel(w) + '</span>'
+        + ((w.race || w.notes) ? '<span class="wk"></span><span class="lrNote">' + pretty(w.race || w.notes) + '</span>' : '')
+        + '</div>';
+    }).join('')).join('');
+  return '<section class="card"><span class="cardName">Long-run roadmap</span>'
+    + '<div class="legend"><span><i style="background:var(--brand)"></i>build</span><span><i style="background:var(--warn)"></i>deload / recovery</span><span><i style="background:var(--pos)"></i>race</span></div>'
+    + '<div>' + body + '</div>'
+    + '<p class="note">' + pretty(RM.supersedes) + '</p></section>';
+}
+
+function pacingHtml(){
+  const z = HB.runningPlan.paceZones, rp = RM.raceDayPacing;
+  return '<section class="card"><span class="cardName">Paces</span>'
+    + '<div class="zoneRow">'
+    + '<div class="zoneChip"><span class="zN">' + pretty(z.easyMinPerKm) + '</span><span class="zL">Easy /km</span></div>'
+    + '<div class="zoneChip"><span class="zN">' + pretty(z.tempoMinPerKm) + '</span><span class="zL">Tempo /km</span></div>'
+    + '<div class="zoneChip"><span class="zN">' + pretty(z.intervalMinPerKm) + '</span><span class="zL">Interval /km</span></div>'
+    + '</div><p class="note">Zones from ' + pretty(HB.runningPlan.paceZonesBasis) + '. Proven half: ' + PLAN.athlete.running.provenHalfMarathon.time + ' (' + PLAN.athlete.running.provenHalfMarathon.paceMinPerKm + '/km).</p>'
+    + '<div class="raceGrid">'
+    + '<div class="box"><div class="label">Bendigo Half · target</div><div class="big">' + pretty(rp.bendigoHalfMarathon.targetPaceMinPerKm) + '<small>/km</small></div><p class="note" style="margin-top:6px">' + pretty(rp.bendigoHalfMarathon.approach) + '. ' + pretty(rp.bendigoHalfMarathon.context) + '</p></div>'
+    + '<div class="box"><div class="label">Ballarat Marathon · first 25–28 km</div><div class="big">' + pretty(rp.ballaratMarathon.targetPaceMinPerKm_first25to28km) + '<small>/km</small></div><p class="note" style="margin-top:6px">' + pretty(rp.ballaratMarathon.approach) + '. ' + pretty(rp.ballaratMarathon.context) + '</p></div>'
+    + '</div>'
+    + '<div class="label" style="margin-top:var(--space-2)">Both race days</div><ul class="bullets">' + rp.bothRaceDays.map(x => '<li>' + pretty(x) + '</li>').join('') + '</ul>'
+    + '</section>';
+}
+
+function strengthHtml(){
+  const wk = weekOf(PLAN_START, new Date());
+  const hw = wk >= 1 && wk <= 11 ? weekOf(HB.startDate, new Date()) : 0;
+  const isNow = (block) => {
+    if (!hw) return false;
+    if (/deload/.test(block)) return (block.match(/\d+/g) || []).map(Number).includes(hw);
+    if (/constant/.test(block)) return hw !== 4 && hw !== 8 && hw !== 12;
+    const m = block.match(/weeks (\d+)-(\d+)/);
+    return !!m && hw >= +m[1] && hw <= +m[2];
+  };
+  const table = (rows) => '<div class="tblWrap"><table class="tbl"><tr><th>Block</th><th>Sets</th><th>%1RM</th><th>Load</th></tr>'
+    + rows.map(r => '<tr' + (isNow(r.block) ? ' class="now"' : '') + '><td>' + pretty(r.block) + '</td><td>' + pretty(r.prescription) + '</td><td class="n">' + pretty(r.percent1RM != null ? r.percent1RM + '%' : '—') + '</td><td class="n">' + pretty(r.weightKg != null ? r.weightKg + ' kg' : '—') + '</td></tr>').join('')
+    + '</table></div>';
+  const rm = PLAN.athlete.oneRepMaxesKg;
+  return '<details class="card"><summary><span class="cardName">Strength loads (Mon / Thu)</span></summary>'
+    + '<div class="zoneRow">'
+    + '<div class="zoneChip"><span class="zN">' + rm.squat + ' kg</span><span class="zL">Squat 1RM</span></div>'
+    + '<div class="zoneChip"><span class="zN">' + rm.deadlift + ' kg</span><span class="zL">Deadlift 1RM</span></div>'
+    + '<div class="zoneChip"><span class="zN">' + rm.benchPress + ' kg</span><span class="zL">Bench 1RM</span></div>'
+    + '</div>'
+    + '<div class="label" style="margin-top:var(--space-2)">Phase 1 · Monday squat</div>' + table(LOADS.squatMonday)
+    + '<div class="label" style="margin-top:var(--space-2)">Phase 1 · Thursday deadlift</div>' + table(LOADS.deadliftThursday)
+    + '<p class="note">"Weeks" in these tables are Hybrid Block weeks (started ' + fmtShort(HB.startDate) + '), one ahead of the marathon plan\'s week count.</p>'
+    + '<div class="label" style="margin-top:var(--space-2)">Phase 2</div><p class="note">' + pretty(RM.phases[1].strengthNote) + '</p>'
+    + '<div class="label">Phase 3</div><p class="note">' + pretty(RM.phases[2].strengthNote) + '</p>'
+    + '<div class="label">Progression</div><p class="note">' + pretty(HB.strengthSessions.progressionRule) + ' ' + pretty(LOADS.method) + '</p>'
+    + '<div class="label">Shoulder</div><p class="note">' + pretty(PLAN.athlete.shoulder) + '.</p>'
+    + '</details>';
+}
+
+function nutritionHtml(){
+  const n = PLAN.nutrition, m = n.macrosDaily, f = n.raceFueling;
+  return '<details class="card"><summary><span class="cardName">Fuel</span></summary>'
+    + '<div class="zoneRow">'
+    + '<div class="zoneChip"><span class="zN">' + n.targetIntakeKcal + '</span><span class="zL">kcal / day</span></div>'
+    + '<div class="zoneChip"><span class="zN">' + m.proteinG + ' g</span><span class="zL">Protein</span></div>'
+    + '<div class="zoneChip"><span class="zN">' + m.carbsG + ' g</span><span class="zL">Carbs</span></div>'
+    + '<div class="zoneChip"><span class="zN">' + m.fatG + ' g</span><span class="zL">Fat</span></div>'
+    + '</div><p class="note">' + pretty(n.goalType) + '. BMR ' + n.bmrKcal + ' kcal (' + pretty(n.basis) + ').</p>'
+    + '<ul class="bullets">' + n.guidance.map(x => '<li>' + pretty(x) + '</li>').join('') + '</ul>'
+    + '<div class="label" style="margin-top:var(--space-2)">During long runs & races</div>'
+    + '<ul class="bullets"><li>' + pretty(f.duringRun) + '</li><li>' + pretty(f.practiceRule) + '</li><li>' + pretty(f.hydration) + '</li></ul>'
+    + '</details>';
+}
+
+function rulesHtml(){
+  return '<details class="card"><summary><span class="cardName">Rules</span></summary>'
+    + '<div class="label">Marathon roadmap</div><ul class="bullets">' + RM.rules.map(x => '<li>' + pretty(x) + '</li>').join('') + '</ul>'
+    + '<div class="label" style="margin-top:var(--space-2)">Strength & recovery</div><ul class="bullets">' + HB.rules.filter(x => !/Hybrid Mile|Hybrid equipment/.test(x)).map(x => '<li>' + pretty(x) + '</li>').join('') + '</ul>'
+    + '</details>';
+}
+
+function render(){
+  document.getElementById('app').innerHTML = heroHtml() + todayHtml() + weekHtml() + longRunsHtml() + pacingHtml() + strengthHtml() + nutritionHtml() + rulesHtml();
+}
+render();
+// Roll the "today" view over at midnight if the tab stays open.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+</script>
+</body>
+</html>

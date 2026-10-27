@@ -126,28 +126,29 @@ function fmtPace(minPerKm){
 }
 
 /* ============================================================
- * 12-week program — same start date as gym.html's PROGRAM, kept as an
- * independent copy here since each page in the suite is self-contained.
+ * Marathon Roadmap (Oct 2026 – Apr 2027) — the run side of race-plan.html,
+ * kept as an independent copy here since each page in the suite is
+ * self-contained. Supersedes the Hybrid Block's Wed intervals + long run.
  * ============================================================ */
-const PROGRAM_START = '2026-07-06'; // Monday
-const TOTAL_WEEKS = 12;
+const PROGRAM_START = '2026-10-26'; // Monday
+const TOTAL_WEEKS = 25;
 
-// Wednesday high-intensity session, by week.
-const WED_PLAN = {
-  1:'6×2min hard / 2min jog', 2:'5×3min hard / 2min jog', 3:'6×3min hard / 90s jog',
-  4:'20min continuous easy (deload)',
-  5:'8×400m interval / 90s jog', 6:'20min continuous tempo', 7:'5×1km threshold / 2min jog',
-  8:'25min easy (deload)',
-  9:'10×400m interval / 60–75s jog', 10:'25min tempo', 11:'6×800m interval / 2min jog',
-  12:'5km all-out time trial (test)'
-};
+// Wednesday session, by week.
+const WED_PLAN = {};
+for (let w = 1; w <= 11; w++) WED_PLAN[w] = 'Steady/moderate 30–45min, occasional strides (no hard intervals yet)';
+for (let w = 12; w <= 18; w++) WED_PLAN[w] = 'Tempo or half-marathon-pace run (continuous, or blocks at HM effort)';
+for (let w = 19; w <= 25; w++) WED_PLAN[w] = 'Steady run, easy–moderate only — no added intensity';
 // Weekend long run target, by week.
 const LONG_PLAN = {
-  1:'7km easy', 2:'8km easy', 3:'9km easy', 4:'5km easy (deload)',
-  5:'9km easy, last 1km moderate', 6:'10km easy', 7:'10km, last 2km moderate', 8:'6km easy (deload)',
-  9:'10km, last 3km moderate', 10:'11km easy', 11:'10km + 3×5min surges at threshold', 12:'6–7km easy (deload/test)'
+  1:'13km easy', 2:'14km easy', 3:'15km easy', 4:'10km easy (deload)',
+  5:'16km easy', 6:'17km easy', 7:'18km easy', 8:'11km easy (deload)',
+  9:'14–16km (Christmas — flexible)', 10:'16–18km (New Year — flexible)', 11:'19km easy',
+  12:'20km', 13:'21km — matches race distance', 14:'14km easy (deload)', 15:'22km — peak, past race distance',
+  16:'16km (taper)', 17:'12km easy (taper)', 18:'RACE: Bendigo Half Marathon · 21.1km, Sun 28 Feb',
+  19:'12km very easy (recovery)', 20:'20km', 21:'24km', 22:'27km', 23:'30km — peak long run',
+  24:'17km easy (taper)', 25:'RACE: Ballarat Marathon · 42.2km, Sun 18 Apr'
 };
-const DELOAD_WEEKS = [4, 8, 12];
+const DELOAD_WEEKS = [4, 8, 14, 19];
 
 function programWeekNumber(d){
   d = d || new Date();
@@ -185,7 +186,7 @@ function save(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e)
 let state = load();
 const ui = { type:'interval', distance:'', time:'', pace:'', intervals:'', notes:'', date: localDateKey() };
 
-const TYPE_LABEL = { interval:'Wed Interval/Tempo', long:'Long Run', extra:'Extra' };
+const TYPE_LABEL = { interval:'Wed Steady/Tempo', long:'Long Run', extra:'Extra' };
 
 /* ============================================================
  * Recovery-adjusted plan — reads today's Garmin Training Readiness
@@ -197,8 +198,8 @@ const TYPE_LABEL = { interval:'Wed Interval/Tempo', long:'Long Run', extra:'Extr
 const HEALTH_KEY = 'patron_health_v1';
 const READINESS_KEY = 'running_readiness_v1';
 const RUN_ADJ = {
-  moderate: { label:'Moderate', interval:'Swap to an easy continuous run (about 20–25min) instead of today’s intervals.', long:'Keep the whole run easy — drop any tempo/surge segment in this week’s target.' },
-  low:      { label:'Low',      interval:'Skip the intervals today — an easy 15–20min jog or full rest is fine.',        long:'Cut the distance by roughly a third and keep it fully conversational, or take the day off.' }
+  moderate: { label:'Moderate', interval:'Swap to an easy continuous run (about 20–25min) instead of today’s steady/tempo session.', long:'Keep the whole run easy — drop any tempo/surge segment in this week’s target.' },
+  low:      { label:'Low',      interval:'Skip the quality today — an easy 15–20min jog or full rest is fine.',        long:'Cut the distance by roughly a third and keep it fully conversational, or take the day off.' }
 };
 function readReadiness(){
   try {
@@ -295,17 +296,17 @@ function weekHeroHtml(){
   let badge, body;
   if (info.status === 'upcoming') {
     badge = '<span class="weekBadge muted">starts in ' + info.daysUntil + (info.daysUntil===1?' day':' days') + '</span>';
-    body = '<p class="cardTag" style="margin-top:var(--space-3)">Your 12-week hybrid program kicks off ' + new Date(PROGRAM_START+'T00:00:00').toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'}) + '. This week\'s targets will appear here once it starts.</p>';
+    body = '<p class="cardTag" style="margin-top:var(--space-3)">Your marathon roadmap kicks off ' + new Date(PROGRAM_START+'T00:00:00').toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'}) + '. This week\'s targets will appear here once it starts.</p>';
   } else if (info.status === 'complete') {
     badge = '<span class="weekBadge muted">program complete</span>';
-    body = '<p class="cardTag" style="margin-top:var(--space-3)">All 12 weeks logged — nice work. Keep logging runs below, or start a new block in gym.html\'s PROGRAM config.</p>';
+    body = '<p class="cardTag" style="margin-top:var(--space-3)">Both races done — nice work. Keep logging runs below.</p>';
   } else {
     const override = todaysReadinessOverride();
     const wedAdjusted = override && override.session === 'interval' ? RUN_ADJ[override.tier].interval : null;
     const longAdjusted = override && override.session === 'long' ? RUN_ADJ[override.tier].long : null;
     badge = '<span class="weekBadge' + (info.deload ? ' deload' : '') + '">week ' + info.week + '/' + TOTAL_WEEKS + (info.deload ? ' · deload' : '') + '</span>';
     body = '<div class="planGrid">'
-      + '<div class="planBox"><div class="planLabel">Wed · High intensity' + (wedAdjusted ? ' · recovery-adjusted' : '') + '</div><div class="planBody">' + esc(wedAdjusted || info.wed) + '</div>' + (wedAdjusted ? '<div class="planDay wasPlan">was: ' + esc(info.wed) + '</div>' : '') + '</div>'
+      + '<div class="planBox"><div class="planLabel">Wed · Steady / tempo' + (wedAdjusted ? ' · recovery-adjusted' : '') + '</div><div class="planBody">' + esc(wedAdjusted || info.wed) + '</div>' + (wedAdjusted ? '<div class="planDay wasPlan">was: ' + esc(info.wed) + '</div>' : '') + '</div>'
       + '<div class="planBox"><div class="planLabel">Weekend · Long run' + (longAdjusted ? ' · recovery-adjusted' : '') + '</div><div class="planBody">' + esc(longAdjusted || info.long) + '</div>' + (longAdjusted ? '<div class="planDay wasPlan">was: ' + esc(info.long) + '</div>' : '') + '</div>'
       + '</div>'
       + weekProgressHtml(info.week);
@@ -313,9 +314,9 @@ function weekHeroHtml(){
   return '<section class="card"><span class="cardName">This week</span>' + badge
     + body
     + '<div class="zoneRow">'
-    + '<div class="zoneChip"><span class="zN">5:45–6:20</span><span class="zL">Easy /km</span></div>'
-    + '<div class="zoneChip"><span class="zN">5:00–5:15</span><span class="zL">Tempo/threshold /km</span></div>'
-    + '<div class="zoneChip"><span class="zN">4:25–4:40</span><span class="zL">Interval /km</span></div>'
+    + '<div class="zoneChip"><span class="zN">5:28–6:01</span><span class="zL">Easy /km</span></div>'
+    + '<div class="zoneChip"><span class="zN">4:45–4:59</span><span class="zL">Tempo/threshold /km</span></div>'
+    + '<div class="zoneChip"><span class="zN">4:12–4:26</span><span class="zL">Interval /km</span></div>'
     + '</div></section>';
 }
 function weekProgressHtml(week){

@@ -342,6 +342,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-ui), -ap
  * ============================================================ */
 const APPS = [
   { file: 'running.html',     name: 'Running',     tag: "This week's plan · log your runs",     icon: '👟', wide: true },
+  { file: 'race-plan.html',   name: 'Race Plan',   tag: 'Bendigo Half → Ballarat Marathon',      icon: '🏁', wide: true },
   { file: 'gym.html',         name: 'Gym',         tag: 'Progressive overload coach',           icon: '🏋️', wide: true },
   { file: 'fitness.html',     name: 'Fitness',     tag: 'Run load · pace @ HR · VO2max',        icon: '🏃', wide: true },
   { file: 'supplements.html', name: 'Supplements', tag: 'Your stack + smart recommendations',   icon: '💊' },
@@ -572,18 +573,24 @@ function statFor(file){
       const s = lsGet('running_standalone_v1');
       if (s && Array.isArray(s.runs) && s.runs.length) {
         const progWeek = (dateKey) => {
-          const start = new Date('2026-07-06T00:00:00');
+          const start = new Date('2026-10-26T00:00:00');
           const d = new Date(dateKey + 'T00:00:00');
           const days = Math.floor((d - start) / 86400000);
           return days >= 0 ? Math.floor(days / 7) + 1 : 0;
         };
         const thisWeek = progWeek(localDateKey());
-        if (thisWeek >= 1 && thisWeek <= 12) {
+        if (thisWeek >= 1 && thisWeek <= 25) {
           const n = s.runs.filter(r => progWeek(r.dateKey) === thisWeek).length;
           return { value: Math.min(n, 2) + '/2', label: 'runs this week' };
         }
         return { value: String(s.runs.length), label: 'runs logged' };
       }
+    }
+    else if (file === 'race-plan.html') {
+      const races = [{ name: 'Bendigo Half', date: '2027-02-28' }, { name: 'Ballarat Marathon', date: '2027-04-18' }];
+      const today = new Date(localDateKey() + 'T00:00:00');
+      const next = races.map(r => Object.assign({ days: Math.round((new Date(r.date + 'T00:00:00') - today) / 86400000) }, r)).find(r => r.days >= 0);
+      if (next) return { value: next.days === 0 ? 'Today' : next.days + ' days', label: 'to ' + next.name };
     }
     else if (file === 'testing.html') {
       const s = lsGet('vald_testing_cache_v1');
