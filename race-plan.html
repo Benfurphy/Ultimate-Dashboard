@@ -421,6 +421,23 @@ const PLAN = {
       }
     ],
 
+    "bodyCompositionGoal": {
+      "stated": "Visible abs / low body fat, concurrent with marathon training (not pursuing added muscle mass)",
+      "approach": "Not a large deficit - shift calories off rest days (low performance value) onto long-run days (protects against bonking/under-recovery). Averaged across a week this lands close to the flat 3000kcal maintenance target, just redistributed.",
+      "dayTypeCaloriesKcal": {
+        "restDay": 2600,
+        "strengthOrEasyRunDay": 2900,
+        "qualityRunDayWed": 3100,
+        "longRunDay": 3400,
+        "bigLongRunDay_25to30km_phase3": "3700-3900"
+      },
+      "proteinG": 180,
+      "proteinNote": "Stays flat every day regardless of day type - protects muscle while calories/carbs flex around training demand",
+      "coreWork": "Keep Hanging Knee Raise (Mon) + Pallof Press (Thu) in every week of the marathon build, even as other strength accessories are trimmed in Phase 2 and dropped in Phase 3 (Week 22+). Low-fatigue, doesn't compete with running recovery, and directly serves this goal.",
+      "tracking": ["7-day rolling average bodyweight (already in nutrition plan)", "Waist circumference, biweekly", "Progress photos"],
+      "priorityCaveat": "If leaning out ever conflicts with having enough fuel to finish the marathon - realistically only in the final weeks before Ballarat (Phase 3, Weeks 22-25) - finishing wins. Short window, not the whole plan."
+    },
+
     "raceDayPacing": {
       "bendigoHalfMarathon": {
         "date": "2027-02-28",
@@ -477,6 +494,15 @@ const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
 function kmLabel(w){ return w.distanceKmRange ? w.distanceKmRange.join('–') + ' km' : w.distanceKm + ' km'; }
 function kmValue(w){ return w.distanceKmRange ? w.distanceKmRange[1] : w.distanceKm; }
+const BC = RM.bodyCompositionGoal;
+// Core work stays in every week of the build, even once the other accessories go.
+const CORE = { Mon: HB.strengthSessions.mondayLowerSquatFocus[4], Thu: HB.strengthSessions.thursdayLowerHingeUnilateral[4] };
+// Daily calorie target by day type; Phase 3 long runs of 25km+ get the bigger number.
+function kcalFor(type, wk){
+  const c = BC.dayTypeCaloriesKcal;
+  if (type === 'long') { const lr = LONG_RUNS.find(w => w.week === wk); return (lr.phase.id === 3 && kmValue(lr) >= 25) ? c.bigLongRunDay_25to30km_phase3 : c.longRunDay; }
+  return { rest: c.restDay, easy: c.strengthOrEasyRunDay, quality: c.qualityRunDayWed }[type];
+}
 function phaseForWeek(wk){ return RM.phases.find(p => wk >= p.longRunByWeek[0].week && wk <= p.longRunByWeek[p.longRunByWeek.length-1].week) || null; }
 
 /* Mon/Thu main-lift loads for a given plan week. Phase 1 follows the
@@ -547,17 +573,22 @@ function todayHtml(){
   const ph = phaseForWeek(wk), lr = LONG_RUNS.find(w => w.week === wk);
   const dow = DAYS[(now.getDay() + 6) % 7];
   const ub = RM.upperBodyMaintenance, st = strengthFor(wk, now);
-  let title, detail = '';
+  let title, detail = '', fuel;
 
   if (dow === 'Sat' || dow === 'Sun') {
     title = lr.race ? 'Race week — ' + esc(lr.race) : 'Long run — ' + kmLabel(lr) + ' (Sat or Sun)';
     detail = '<p class="cardTag">The other weekend day is ' + esc(ph.weeklyStructure.SunOrSat.toLowerCase()) + '. ' + pretty(ph.weeklyStructure.SatOrSun) + (lr.notes ? ' · ' + pretty(lr.notes) : '') + '.</p>';
+    fuel = '<b>' + pretty(kcalFor('long', wk)) + ' kcal</b> on the long-run day · <b>' + kcalFor('rest', wk) + ' kcal</b> on the rest day';
   } else {
+    fuel = '<b>' + kcalFor(dow === 'Wed' ? 'quality' : 'easy', wk) + ' kcal</b>';
     title = pretty(ph.weeklyStructure[dow]);
-    if ((dow === 'Mon' || dow === 'Thu') && st) {
+    if ((dow === 'Mon' || dow === 'Thu') && !st) {
+      detail = '<ul class="exList"><li><span>' + pretty(CORE[dow].exercise) + '</span><span class="val">' + pretty(CORE[dow].sets) + '</span></li></ul>'
+        + '<p class="note">Core stays in every week of the build — low-fatigue, and it serves the body-comp goal.</p>';
+    } else if ((dow === 'Mon' || dow === 'Thu') && st) {
       const lift = dow === 'Mon' ? st.squat : st.deadlift;
       const liftName = dow === 'Mon' ? 'Back Squat' : 'Deadlift';
-      const accessories = st.full ? (dow === 'Mon' ? HB.strengthSessions.mondayLowerSquatFocus : HB.strengthSessions.thursdayLowerHingeUnilateral).slice(1) : [];
+      const accessories = st.full ? (dow === 'Mon' ? HB.strengthSessions.mondayLowerSquatFocus : HB.strengthSessions.thursdayLowerHingeUnilateral).slice(1) : [CORE[dow]];
       detail = '<ul class="exList"><li class="main"><span>' + liftName + ' · ' + pretty(lift.rx) + '</span><span class="val">' + pretty(lift.kg) + '</span></li>'
         + accessories.map(e => '<li><span>' + pretty(e.exercise) + '</span><span class="val">' + pretty(e.sets) + '</span></li>').join('')
         + '</ul><p class="note">' + esc(st.label) + '. Autoregulate by RPE on the day — these are starting points, not targets to force.</p>';
@@ -568,7 +599,10 @@ function todayHtml(){
     }
   }
   return '<section class="card"><div class="cardHead"><span class="cardName">Today</span><span class="badge muted">' + now.toLocaleDateString([], { weekday:'long', day:'numeric', month:'short' }) + '</span></div>'
-    + '<div class="body">' + title + '</div>' + detail + '</section>';
+    + '<div class="body">' + title + '</div>' + detail
+    + '<p class="note">Fuel today: ' + fuel + ' · ' + BC.proteinG + ' g protein</p>'
+    + (wk >= 22 ? '<p class="note">' + pretty(BC.priorityCaveat) + '</p>' : '')
+    + '</section>';
 }
 
 function weekHtml(){
@@ -657,8 +691,16 @@ function strengthHtml(){
 }
 
 function nutritionHtml(){
-  const n = PLAN.nutrition, m = n.macrosDaily, f = n.raceFueling;
-  return '<details class="card"><summary><span class="cardName">Fuel</span></summary>'
+  const n = PLAN.nutrition, m = n.macrosDaily, f = n.raceFueling, c = BC.dayTypeCaloriesKcal;
+  const dayTypes = [['Rest day', c.restDay], ['Strength or easy-run day', c.strengthOrEasyRunDay], ['Wed quality run', c.qualityRunDayWed], ['Long-run day', c.longRunDay], ['Phase 3 long run, 25–30 km', c.bigLongRunDay_25to30km_phase3]];
+  return '<details class="card"><summary><span class="cardName">Fuel & body composition</span></summary>'
+    + '<div class="label">Goal</div><p class="note">' + pretty(BC.stated) + '. ' + pretty(BC.approach) + '</p>'
+    + '<div class="tblWrap"><table class="tbl"><tr><th>Day type</th><th>kcal</th></tr>'
+    + dayTypes.map(r => '<tr><td>' + r[0] + '</td><td class="n">' + pretty(r[1]) + '</td></tr>').join('')
+    + '</table></div>'
+    + '<p class="note">Protein ' + BC.proteinG + ' g every day — ' + pretty(BC.proteinNote).replace(/^S/, 's') + '.</p>'
+    + '<ul class="bullets"><li>' + pretty(BC.coreWork) + '</li><li>Track: ' + BC.tracking.map(pretty).join(' · ') + '</li><li>' + pretty(BC.priorityCaveat) + '</li></ul>'
+    + '<div class="label" style="margin-top:var(--space-2)">Baseline maintenance</div>'
     + '<div class="zoneRow">'
     + '<div class="zoneChip"><span class="zN">' + n.targetIntakeKcal + '</span><span class="zL">kcal / day</span></div>'
     + '<div class="zoneChip"><span class="zN">' + m.proteinG + ' g</span><span class="zL">Protein</span></div>'
