@@ -156,7 +156,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-ui), -ap
 .splitRow { display:flex; gap: 6px; }
 .splitPill { flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; padding: 8px 2px 7px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface-2); }
 .splitPill .dot { width:7px; height:7px; border-radius:50%; background: var(--track); }
-.splitPill .lbl { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em; color: var(--muted); }
+.splitPill .lbl { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.06em; color: var(--muted); text-align: center; line-height: 1.35; }
 .splitPill.done { border-color: var(--pos-line); background: var(--pos-soft); }
 .splitPill.done .dot { background: var(--pos); box-shadow: 0 0 6px var(--pos-line); }
 .splitPill.done .lbl { color: var(--muted-strong); }
@@ -165,6 +165,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-ui), -ap
 .splitPill.today .lbl { color: var(--fg); font-weight: 600; }
 @keyframes splitPulse { 0%,100%{ opacity:1 } 50%{ opacity:.55 } }
 .runSplitRow { display:flex; gap: 8px; }
+.runSplitRow .runPill { padding: 10px 8px; gap: 7px; min-width: 0; }
 .runPill { flex:1; display:flex; align-items:center; gap:9px; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface-2); }
 .runPill .dot { width:7px; height:7px; border-radius:50%; background: var(--track); flex-shrink:0; }
 .runPill .lbl { display:flex; flex-direction:column; gap:1px; }
@@ -590,7 +591,7 @@ function statFor(file){
       const races = [{ name: 'Bendigo Half', date: '2027-02-28' }, { name: 'Ballarat Marathon', date: '2027-04-18' }];
       const today = new Date(localDateKey() + 'T00:00:00');
       const next = races.map(r => Object.assign({ days: Math.round((new Date(r.date + 'T00:00:00') - today) / 86400000) }, r)).find(r => r.days >= 0);
-      if (next) return { value: next.days === 0 ? 'Today' : next.days + ' days', label: 'to ' + next.name };
+      if (next) return { value: next.days === 0 ? 'Today' : next.days + (next.days === 1 ? ' day' : ' days'), label: 'to ' + next.name };
     }
     else if (file === 'testing.html') {
       const s = lsGet('vald_testing_cache_v1');
@@ -711,43 +712,40 @@ function macrosBarHtml(){
 // this again?" without opening gym.html.
 function gymSplitHtml(){
   try {
-    const monday = startOfWeek(new Date());
     const todayKey = localDateKey();
-    const items = WEEK_PLAN.filter(p => p.kind === 'gym').map(p => {
-      const d = new Date(monday); d.setDate(d.getDate() + (p.dow - 1));
-      const dateKey = localDateKey(d);
-      return { label: p.label, dateKey, done: gymDoneOn(dateKey) };
-    });
+    const items = weekPlan().filter(p => p.kind === 'gym').map(p => Object.assign({ dateKey: planDateKey(p), done: planDone(p) }, p));
+    if (!items.length) return '<div class="cardStat"><span class="cardStatValue">Run focus</span><span class="cardStatLabel">no loaded lifts this week</span></div>';
     const pills = items.map(it => {
       const cls = it.done ? 'done' : (it.dateKey === todayKey ? 'today' : '');
-      const short = it.label.charAt(0) + '·' + it.label.split(' ')[1];
-      return '<div class="splitPill' + (cls ? ' ' + cls : '') + '"><span class="dot"></span><span class="lbl">' + esc(short) + '</span></div>';
+      return '<div class="splitPill' + (cls ? ' ' + cls : '') + '"><span class="dot"></span><span class="lbl">' + esc(it.short) + '<br>' + DOW_SHORT[it.dow % 7] + '</span></div>';
     }).join('');
-    let next = items.find(it => !it.done && it.dateKey >= todayKey);
-    const statName = next ? next.label : 'Lower A';
-    const statLabel = next && next.dateKey === todayKey ? "today's session" : 'next session';
+    const next = items.find(it => !it.done && it.dateKey >= todayKey);
+    const statName = next ? next.label + (next.load ? ' · ' + next.load : '') : 'All done';
+    const statLabel = !next ? 'this week' : next.dateKey === todayKey ? "today's session" : 'next session';
     return '<div class="splitRow">' + pills + '</div>'
       + '<div class="cardStat"><span class="cardStatValue">' + esc(statName) + '</span><span class="cardStatLabel">' + esc(statLabel) + '</span></div>';
   } catch (e) { return ''; }
 }
-// This week's 2-run split (Tempo/Interval + Long) as two pills — done (via
-// runDoneThisWeek, matched by program week same as the reminder chips), today
-// (matches the run's fixed weekday), or upcoming — plus whichever run is next.
+// This week's four runs (Tue easy, Wed steady/tempo, Fri easy, weekend long)
+// as pills — done (counted from running.html's log by type, same as the
+// week-ahead chips), today, or upcoming — plus whichever run is next.
 function runSplitHtml(){
   try {
-    const items = WEEK_PLAN.filter(p => p.kind === 'run').map(p => ({ label: p.label, dow: p.dow, done: runDoneThisWeek(p.runType) }));
-    const todayDow = new Date().getDay();
+    const items = weekPlan().filter(p => p.kind === 'run').map(p => Object.assign({ done: planDone(p) }, p));
+    if (!items.length) return '';
+    const todayDow = new Date().getDay() || 7;
     const pills = items.map(it => {
       const cls = it.done ? 'done' : (it.dow === todayDow ? 'today' : '');
-      return '<div class="runPill' + (cls ? ' ' + cls : '') + '"><span class="dot"></span><span class="lbl"><span class="lblName">' + esc(it.label.split(' ')[0]) + '</span><span class="lblSub">' + esc(DOW_SHORT[it.dow].toUpperCase()) + '</span></span></div>';
+      return '<div class="runPill' + (cls ? ' ' + cls : '') + '"><span class="dot"></span><span class="lbl"><span class="lblName">' + esc(it.short) + '</span><span class="lblSub">' + esc(DOW_SHORT[it.dow % 7].toUpperCase()) + '</span></span></div>';
     }).join('');
-    const todayItem = items.find(it => it.dow === todayDow);
+    // dow 6 is the floating Sat-or-Sun long run; a race (dow 7) is fixed on Sunday.
+    const todayItem = items.find(it => it.dow === todayDow || (it.dow === 6 && todayDow === 7));
     let statName, statLabel;
     if (todayItem && !todayItem.done) { statName = todayItem.label; statLabel = "today's session"; }
     else {
-      const next = items.find(it => !it.done && it.dow > todayDow) || items.find(it => !it.done);
-      statName = next ? next.label : items[0].label;
-      statLabel = 'next session';
+      const next = items.find(it => !it.done && it.dow > todayDow);
+      statName = next ? next.label : 'All done';
+      statLabel = next ? 'next session' : 'this week';
     }
     return '<div class="runSplitRow">' + pills + '</div>'
       + '<div class="cardStat"><span class="cardStatValue">' + esc(statName) + '</span><span class="cardStatLabel">' + esc(statLabel) + '</span></div>';
@@ -1042,14 +1040,6 @@ function startOfWeek(d){
 }
 function loggedWeightToday(){ try { const s = lsGet('progress_standalone_v1'); return !!(s && Array.isArray(s.entries) && s.entries.some(e => e && e.dateKey === localDateKey())); } catch(e){ return false; } }
 function gymDoneOn(dateKey){ try { const d = lsGet('po_coach_workout_done'); return !!(d && d[dateKey]); } catch(e){ return false; } }
-function runDoneThisWeek(type){
-  try {
-    const s = lsGet('running_standalone_v1');
-    if (!s || !Array.isArray(s.runs)) return false;
-    const wk = programWeekNumber();
-    return s.runs.some(r => r && r.type === type && programWeekNumber(new Date(r.dateKey + 'T12:00:00')) === wk);
-  } catch(e){ return false; }
-}
 // VALD test entries carry a full timestamp in `.date`; "today" = local calendar day.
 function valdTestedToday(kind){
   try {
@@ -1077,27 +1067,71 @@ function todoHtml(){
     + '</div>';
 }
 
-const WEEK_PLAN = [
-  { dow: 1, label: 'Lower A',   file: 'gym.html',     kind: 'gym' },
-  { dow: 2, label: 'Upper A',   file: 'gym.html',     kind: 'gym' },
-  { dow: 3, label: 'Wed Run',   file: 'running.html', kind: 'run', runType: 'interval' },
-  { dow: 4, label: 'Lower B',   file: 'gym.html',     kind: 'gym' },
-  { dow: 5, label: 'Upper B',   file: 'gym.html',     kind: 'gym' },
-  { dow: 6, label: 'Long Run',  file: 'running.html', kind: 'run', runType: 'long' }
-];
+/* Marathon Roadmap (26 Oct 2026 – 18 Apr 2027): Mon squat, Tue easy run +
+ * upper, Wed steady/tempo, Thu deadlift, Fri easy run + upper, weekend long
+ * run. Strength thins out in Phase 3 (wk 19+) and upper-body work drops from
+ * wk 22 — same plan as race-plan.html / running.html / gym.html. */
+const MARATHON_START = '2026-10-26';
+const MARATHON_WEEKS = 25;
+const LONG_RUN_KM = [null, '13', '14', '15', '10', '16', '17', '18', '11', '14–16', '16–18', '19', '20', '21', '14', '22', '16', '12', '21.1', '12', '22', '28', '32', '34', '19', '42.2'];
+function marathonWeek(d){
+  const days = Math.floor((startOfWeek(d || new Date()) - new Date(MARATHON_START + 'T00:00:00')) / 86400000);
+  return days < 0 ? 0 : Math.floor(days / 7) + 1;
+}
+// Mon squat / Thu deadlift working weight (kg) for a plan week. Phase 1
+// follows the Hybrid Block, which started a week earlier (hybrid wk = wk + 1).
+function liftLoad(lift, wk){
+  if (wk <= 11) {
+    const h = wk + 1, deload = h === 4 || h === 8 || h === 12;
+    if (lift === 'deadlift') return deload ? '120–125 kg' : '150 kg';
+    if (h === 12) return 'retest';
+    return deload ? '~120 kg' : h <= 3 ? '145 kg' : h <= 7 ? '150–155 kg' : '162.5–170 kg';
+  }
+  if (wk === 18) return 'light';
+  if (lift === 'deadlift') return (wk === 14 || wk >= 16) ? '120–125 kg' : '~150 kg';
+  return wk >= 16 ? '~145–150 kg' : '~150–155 kg';
+}
+// This week's sessions. dow is 1=Mon..7=Sun (the race weeks end on Sunday).
+function weekPlan(){
+  const wk = marathonWeek();
+  if (wk < 1 || wk > MARATHON_WEEKS) return [];
+  const phase3 = wk >= 19, late = wk >= 22, race = wk === 18 || wk === 25;
+  const easy = late ? 'Easy Run' : 'Easy + Upper';
+  const plan = [];
+  if (!late) plan.push({ dow: 1, label: phase3 ? 'Light Strength' : 'Squat', short: phase3 ? 'Light' : 'Squat', load: phase3 ? null : liftLoad('squat', wk), file: 'gym.html', kind: 'gym' });
+  plan.push({ dow: 2, label: easy, short: 'Easy', file: 'running.html', kind: 'run', runType: 'easy', nth: 1 });
+  if (!late) plan.push({ dow: 2, label: 'Upper', short: 'Upper', file: 'gym.html', kind: 'gym', gymOnly: true });
+  plan.push({ dow: 3, label: wk >= 12 && wk <= 18 ? 'Tempo Run' : 'Steady Run', short: wk >= 12 && wk <= 18 ? 'Tempo' : 'Steady', file: 'running.html', kind: 'run', runType: 'interval' });
+  if (!phase3) plan.push({ dow: 4, label: 'Deadlift', short: 'Deadlift', load: liftLoad('deadlift', wk), file: 'gym.html', kind: 'gym' });
+  plan.push({ dow: 5, label: easy, short: 'Easy', file: 'running.html', kind: 'run', runType: 'easy', nth: 2 });
+  if (!late) plan.push({ dow: 5, label: 'Upper', short: 'Upper', file: 'gym.html', kind: 'gym', gymOnly: true });
+  plan.push(race
+    ? { dow: 7, label: wk === 18 ? 'Bendigo Half' : 'Ballarat Marathon', short: 'Race', file: 'race-plan.html', kind: 'run', runType: 'long' }
+    : { dow: 6, label: 'Long Run · ' + LONG_RUN_KM[wk] + 'km', short: 'Long', file: 'running.html', kind: 'run', runType: 'long' });
+  return plan;
+}
+function runCountThisWeek(type){
+  try {
+    const s = lsGet('running_standalone_v1');
+    if (!s || !Array.isArray(s.runs)) return 0;
+    const wk = programWeekNumber();
+    return s.runs.filter(r => r && r.type === type && programWeekNumber(new Date(r.dateKey + 'T12:00:00')) === wk).length;
+  } catch(e){ return 0; }
+}
+function planDateKey(p){
+  const d = startOfWeek(new Date()); d.setDate(d.getDate() + (p.dow - 1));
+  return localDateKey(d);
+}
+function planDone(p){
+  return p.kind === 'gym' ? gymDoneOn(planDateKey(p)) : runCountThisWeek(p.runType) >= (p.nth || 1);
+}
 const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function weekAheadHtml(){
-  const monday = startOfWeek(new Date());
-  const items = WEEK_PLAN.filter(p => {
-    if (p.kind === 'gym') {
-      const d = new Date(monday); d.setDate(d.getDate() + (p.dow - 1));
-      return !gymDoneOn(localDateKey(d));
-    }
-    return !runDoneThisWeek(p.runType);
-  });
+  // Upper-body work rides along with the Tue/Fri easy run, so it gets one chip.
+  const items = weekPlan().filter(p => !p.gymOnly && !planDone(p));
   if (!items.length) return '';
   return '<div class="reminders" role="status"><span class="remindersLabel">The week ahead</span>'
-    + items.map(p => '<a class="reminderChip" href="' + p.file + '"><span class="reminderDot"></span>' + DOW_SHORT[p.dow] + ' · ' + esc(p.label) + ' <span class="reminderGo" aria-hidden>→</span></a>').join('')
+    + items.map(p => '<a class="reminderChip" href="' + p.file + '"><span class="reminderDot"></span>' + DOW_SHORT[p.dow % 7] + ' · ' + esc(p.label) + ' <span class="reminderGo" aria-hidden>→</span></a>').join('')
     + '</div>';
 }
 function render(){

@@ -133,6 +133,8 @@ function fmtPace(minPerKm){
 const PROGRAM_START = '2026-10-26'; // Monday
 const TOTAL_WEEKS = 25;
 
+// Tue/Fri easy run — upper-body maintenance drops from week 22.
+function easyPlan(wk){ return wk < 22 ? 'Easy 30–40min + 15–20min upper-body maintenance' : 'Easy 30–40min'; }
 // Wednesday session, by week.
 const WED_PLAN = {};
 for (let w = 1; w <= 11; w++) WED_PLAN[w] = 'Steady/moderate 30–45min, occasional strides (no hard intervals yet)';
@@ -145,8 +147,8 @@ const LONG_PLAN = {
   9:'14–16km (Christmas — flexible)', 10:'16–18km (New Year — flexible)', 11:'19km easy',
   12:'20km', 13:'21km — matches race distance', 14:'14km easy (deload)', 15:'22km — peak, past race distance',
   16:'16km (taper)', 17:'12km easy (taper)', 18:'RACE: Bendigo Half Marathon · 21.1km, Sun 28 Feb',
-  19:'12km very easy (recovery)', 20:'20km', 21:'24km', 22:'27km', 23:'30km — peak long run',
-  24:'17km easy (taper)', 25:'RACE: Ballarat Marathon · 42.2km, Sun 18 Apr'
+  19:'12km very easy (recovery)', 20:'22km', 21:'28km', 22:'32km — first run over 30km', 23:'34km — peak long run (coach-directed)',
+  24:'19km easy (taper)', 25:'RACE: Ballarat Marathon · 42.2km, Sun 18 Apr'
 };
 const DELOAD_WEEKS = [4, 8, 14, 19];
 
@@ -165,7 +167,7 @@ function programWeekInfo(d){
     return { status:'upcoming', week:0, daysUntil };
   }
   if (wk > TOTAL_WEEKS) return { status:'complete', week: TOTAL_WEEKS };
-  return { status:'active', week: wk, deload: DELOAD_WEEKS.indexOf(wk) !== -1, wed: WED_PLAN[wk], long: LONG_PLAN[wk] };
+  return { status:'active', week: wk, deload: DELOAD_WEEKS.indexOf(wk) !== -1, easy: easyPlan(wk), wed: WED_PLAN[wk], long: LONG_PLAN[wk] };
 }
 
 /* ============================================================
@@ -184,9 +186,9 @@ function load(){
 }
 function save(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
 let state = load();
-const ui = { type:'interval', distance:'', time:'', pace:'', intervals:'', notes:'', date: localDateKey() };
+const ui = { type: todaySessionType() || 'extra', distance:'', time:'', pace:'', intervals:'', notes:'', date: localDateKey() };
 
-const TYPE_LABEL = { interval:'Wed Steady/Tempo', long:'Long Run', extra:'Extra' };
+const TYPE_LABEL = { easy:'Tue/Fri Easy', interval:'Wed Steady/Tempo', long:'Long Run', extra:'Extra' };
 
 /* ============================================================
  * Recovery-adjusted plan — reads today's Garmin Training Readiness
@@ -198,8 +200,8 @@ const TYPE_LABEL = { interval:'Wed Steady/Tempo', long:'Long Run', extra:'Extra'
 const HEALTH_KEY = 'patron_health_v1';
 const READINESS_KEY = 'running_readiness_v1';
 const RUN_ADJ = {
-  moderate: { label:'Moderate', interval:'Swap to an easy continuous run (about 20–25min) instead of today’s steady/tempo session.', long:'Keep the whole run easy — drop any tempo/surge segment in this week’s target.' },
-  low:      { label:'Low',      interval:'Skip the quality today — an easy 15–20min jog or full rest is fine.',        long:'Cut the distance by roughly a third and keep it fully conversational, or take the day off.' }
+  moderate: { label:'Moderate', easy:'Keep it short — 20–25min fully conversational, and skip the upper-body add-on.', interval:'Swap to an easy continuous run (about 20–25min) instead of today’s steady/tempo session.', long:'Keep the whole run easy — drop any tempo/surge segment in this week’s target.' },
+  low:      { label:'Low',      easy:'Swap the run for a 20min walk or full rest.', interval:'Skip the quality today — an easy 15–20min jog or full rest is fine.',        long:'Cut the distance by roughly a third and keep it fully conversational, or take the day off.' }
 };
 function readReadiness(){
   try {
@@ -211,9 +213,10 @@ function readReadiness(){
     return { score, tier };
   } catch(e){ return null; }
 }
-// Interval day = Wed (matches WED_PLAN); long-run day = weekend (matches LONG_PLAN).
+// Easy = Tue/Fri; Wed session = 'interval' (matches WED_PLAN); long run = weekend (matches LONG_PLAN).
 function todaySessionType(){
   const dow = new Date().getDay();
+  if (dow === 2 || dow === 5) return 'easy';
   if (dow === 3) return 'interval';
   if (dow === 0 || dow === 6) return 'long';
   return null;
@@ -235,7 +238,7 @@ function todaysReadinessOverride(){
  * Garmin activity rather than typing distance/time/pace by hand; Intervals
  * and Notes stay yours since Garmin has no idea about either. Matched by
  * calendar date, not by guessing which planned session it is — the fixed
- * weekly split (Wed = interval, weekend = long) already tells us that.
+ * weekly split (Tue/Fri = easy, Wed = interval, weekend = long) already tells us that.
  * Silently does nothing if not deployed on Vercel or Garmin isn't connected.
  * ============================================================ */
 let garminActivity = null; // the one unhandled activity from today, if any
@@ -278,7 +281,7 @@ function readinessBannerHtml(){
   const adj = RUN_ADJ[r.tier];
   const override = todaysReadinessOverride();
   const applied = !!(override && override.tier === r.tier && override.session === session);
-  const sessionLabel = session === 'interval' ? "today's interval session" : "today's long run";
+  const sessionLabel = { easy:"today's easy run", interval:"today's Wednesday run", long:"today's long run" }[session];
   return '<section class="card readinessCard' + (r.tier==='low'?' low':'') + '">'
     + '<div class="readinessHead"><span class="cardName">Recovery</span><span class="weekBadge' + (r.tier==='low'?' deload':'') + '">Training Readiness ' + r.score + ' · ' + adj.label + '</span></div>'
     + '<p class="cardTag" style="margin-top:var(--space-3)">' + esc(adj[session]) + '</p>'
@@ -302,12 +305,18 @@ function weekHeroHtml(){
     body = '<p class="cardTag" style="margin-top:var(--space-3)">Both races done — nice work. Keep logging runs below.</p>';
   } else {
     const override = todaysReadinessOverride();
-    const wedAdjusted = override && override.session === 'interval' ? RUN_ADJ[override.tier].interval : null;
-    const longAdjusted = override && override.session === 'long' ? RUN_ADJ[override.tier].long : null;
+    const todayDow = new Date().getDay();
+    // A recovery adjustment only rewrites the box for today's session.
+    const box = (label, plan, session, dows) => {
+      const adjusted = override && override.session === session && dows.indexOf(todayDow) !== -1 ? RUN_ADJ[override.tier][session] : null;
+      return '<div class="planBox"><div class="planLabel">' + label + (adjusted ? ' · recovery-adjusted' : '') + '</div><div class="planBody">' + esc(adjusted || plan) + '</div>' + (adjusted ? '<div class="planDay wasPlan">was: ' + esc(plan) + '</div>' : '') + '</div>';
+    };
     badge = '<span class="weekBadge' + (info.deload ? ' deload' : '') + '">week ' + info.week + '/' + TOTAL_WEEKS + (info.deload ? ' · deload' : '') + '</span>';
     body = '<div class="planGrid">'
-      + '<div class="planBox"><div class="planLabel">Wed · Steady / tempo' + (wedAdjusted ? ' · recovery-adjusted' : '') + '</div><div class="planBody">' + esc(wedAdjusted || info.wed) + '</div>' + (wedAdjusted ? '<div class="planDay wasPlan">was: ' + esc(info.wed) + '</div>' : '') + '</div>'
-      + '<div class="planBox"><div class="planLabel">Weekend · Long run' + (longAdjusted ? ' · recovery-adjusted' : '') + '</div><div class="planBody">' + esc(longAdjusted || info.long) + '</div>' + (longAdjusted ? '<div class="planDay wasPlan">was: ' + esc(info.long) + '</div>' : '') + '</div>'
+      + box('Tue · Easy', info.easy, 'easy', [2])
+      + box('Wed · ' + (info.week >= 12 && info.week <= 18 ? 'Tempo / race pace' : 'Steady'), info.wed, 'interval', [3])
+      + box('Fri · Easy', info.easy, 'easy', [5])
+      + box('Weekend · Long run', info.long, 'long', [6, 0])
       + '</div>'
       + weekProgressHtml(info.week);
   }
@@ -321,10 +330,11 @@ function weekHeroHtml(){
 }
 function weekProgressHtml(week){
   const runsThisWeek = state.runs.filter(r => runWeekNumber(r) === week);
-  const doneInterval = runsThisWeek.some(r => r.type === 'interval');
-  const doneLong = runsThisWeek.some(r => r.type === 'long');
-  return '<div class="weekProgress"><div class="wp' + (doneInterval?' done':'') + '"></div><div class="wp' + (doneLong?' done':'') + '"></div></div>'
-    + '<p class="cardTag" style="margin-top:6px">' + [doneInterval,doneLong].filter(Boolean).length + '/2 planned sessions logged this week</p>';
+  // Four runs a week: two easy (any days), the Wednesday session, the long run.
+  const easyN = runsThisWeek.filter(r => r.type === 'easy').length;
+  const done = [easyN >= 1, runsThisWeek.some(r => r.type === 'interval'), easyN >= 2, runsThisWeek.some(r => r.type === 'long')];
+  return '<div class="weekProgress">' + done.map(d => '<div class="wp' + (d?' done':'') + '"></div>').join('') + '</div>'
+    + '<p class="cardTag" style="margin-top:6px">' + done.filter(Boolean).length + '/4 planned runs logged this week</p>';
 }
 function runWeekNumber(run){
   return programWeekNumber(new Date(run.dateKey + 'T12:00:00'));

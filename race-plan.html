@@ -321,7 +321,7 @@ const PLAN = {
     "verdict": "Enough time for the half (18 weeks) with a stronger base than first assumed (proven 1:58 half marathon 6 weeks before plan start); the full marathon 7 weeks after the half is tight but workable because the only goal is finishing, not time.",
     "generatedFrom": "2026-10-27",
     "races": {
-      "halfMarathon": { "name": "Bendigo Half Marathon", "date": "2027-02-28", "distanceKm": 21.1 },
+      "halfMarathon": { "name": "Bendigo Half Marathon", "date": "2027-02-28", "distanceKm": 21.1, "role": "Trial run for nerves and fuelling (coach directive) - not a performance effort" },
       "fullMarathon": { "name": "Ballarat Marathon", "date": "2027-04-18", "distanceKm": 42.2 }
     },
     "supersedes": "From 2026-10-27 onward, this replaces the Hybrid Performance Block's Tue/Fri hybrid conditioning and its running progression (Wed intervals + long run). Mon/Thu lower-body strength carries over, then tapers down as mileage climbs.",
@@ -409,13 +409,18 @@ const PLAN = {
           "SunOrSat": "Rest"
         },
         "strengthNote": "Loaded barbell lower lifts are dropped in favor of light/bodyweight mobility work from Week 22 on - no specific kg prescribed in this phase; the long run is the priority.",
+        "coachDirective": "Coach set the peak long run to 34km (up from this plan's original conservative 30km). Aggressive for a 7-week bridge but within the range serious marathon plans use; shrinks the untrained final race stretch from 12km to ~8km. Trade-off: less margin for error - treat sharp pain as a reason to cut a session, not push through.",
+        "runsOver30km": {
+          "requested": "2-3 times before the marathon",
+          "implemented": "2 times (Week 22: 32km, Week 23: 34km), back-to-back with no cutback week between them but taper fully preserved after. Chosen over a 3-run version (31/32/34, also back-to-back) which would carry meaningfully higher overuse-injury risk for the same taper length."
+        },
         "longRunByWeek": [
           { "week": 19, "dates": "2027-03-01/2027-03-07", "distanceKm": 12, "notes": "Recovery off the half, very easy", "deload": true },
-          { "week": 20, "dates": "2027-03-08/2027-03-14", "distanceKm": 20, "notes": "Resuming proven fitness, not rebuilding from scratch" },
-          { "week": 21, "dates": "2027-03-15/2027-03-21", "distanceKm": 24 },
-          { "week": 22, "dates": "2027-03-22/2027-03-28", "distanceKm": 27, "notes": "Upper-body maintenance and optional strength drop from here" },
-          { "week": 23, "dates": "2027-03-29/2027-04-04", "distanceKm": 30, "notes": "Peak long run, ~2.5 weeks out" },
-          { "week": 24, "dates": "2027-04-05/2027-04-11", "distanceKm": 17, "notes": "Taper, easy" },
+          { "week": 20, "dates": "2027-03-08/2027-03-14", "distanceKm": 22, "notes": "Resuming proven fitness, not rebuilding from scratch" },
+          { "week": 21, "dates": "2027-03-15/2027-03-21", "distanceKm": 28, "notes": "Last build week before the two big runs" },
+          { "week": 22, "dates": "2027-03-22/2027-03-28", "distanceKm": 32, "notes": "First run over 30km; upper-body maintenance and optional strength drop from here" },
+          { "week": 23, "dates": "2027-03-29/2027-04-04", "distanceKm": 34, "notes": "Second run over 30km - peak, ~2.5 weeks out, coach-directed" },
+          { "week": 24, "dates": "2027-04-05/2027-04-11", "distanceKm": 19, "notes": "Taper, easy" },
           { "week": 25, "dates": "2027-04-12/2027-04-18", "distanceKm": 42.2, "race": "Ballarat Marathon, Sun 18 Apr 2027" }
         ]
       }
@@ -429,7 +434,7 @@ const PLAN = {
         "strengthOrEasyRunDay": 2900,
         "qualityRunDayWed": 3100,
         "longRunDay": 3400,
-        "bigLongRunDay_25to30km_phase3": "3700-3900"
+        "bigLongRunDay_30to34km_phase3": "3900-4200"
       },
       "proteinG": 180,
       "proteinNote": "Stays flat every day regardless of day type - protects muscle while calories/carbs flex around training demand",
@@ -441,9 +446,9 @@ const PLAN = {
     "raceDayPacing": {
       "bendigoHalfMarathon": {
         "date": "2027-02-28",
-        "approach": "Comfortably hard, not all-out - a pace you could hold a short conversation at, not a time trial",
-        "targetPaceMinPerKm": "5:10-5:35",
-        "context": "1:58:00 (~5:35/km) six weeks before plan start is the floor, not the target. This run also has to set you up for the Ballarat bridge, not wreck you for it."
+        "approach": "Role changed per coach directive: trial run for nerves and fuelling, not a performance effort",
+        "targetPaceMinPerKm": "5:30-5:50 (easy-moderate)",
+        "context": "Spend the mental energy on logistics, not pace: execute the exact planned fuelling (gels every 20-30min), hydration, pre-race breakfast timing, kit and warm-up routine precisely as intended for 18 Apr. How calm you feel on the start line and how your gut handles the gels matters more than the clock."
       },
       "ballaratMarathon": {
         "date": "2027-04-18",
@@ -497,10 +502,10 @@ function kmValue(w){ return w.distanceKmRange ? w.distanceKmRange[1] : w.distanc
 const BC = RM.bodyCompositionGoal;
 // Core work stays in every week of the build, even once the other accessories go.
 const CORE = { Mon: HB.strengthSessions.mondayLowerSquatFocus[4], Thu: HB.strengthSessions.thursdayLowerHingeUnilateral[4] };
-// Daily calorie target by day type; Phase 3 long runs of 25km+ get the bigger number.
+// Daily calorie target by day type; the Phase 3 long runs of 30km+ get the bigger number.
 function kcalFor(type, wk){
   const c = BC.dayTypeCaloriesKcal;
-  if (type === 'long') { const lr = LONG_RUNS.find(w => w.week === wk); return (lr.phase.id === 3 && kmValue(lr) >= 25) ? c.bigLongRunDay_25to30km_phase3 : c.longRunDay; }
+  if (type === 'long') { const lr = LONG_RUNS.find(w => w.week === wk); return (lr.phase.id === 3 && kmValue(lr) >= 30) ? c.bigLongRunDay_30to34km_phase3 : c.longRunDay; }
   return { rest: c.restDay, easy: c.strengthOrEasyRunDay, quality: c.qualityRunDayWed }[type];
 }
 function phaseForWeek(wk){ return RM.phases.find(p => wk >= p.longRunByWeek[0].week && wk <= p.longRunByWeek[p.longRunByWeek.length-1].week) || null; }
@@ -544,7 +549,7 @@ function racesHtml(){
     const val = n > 0 ? n + '<small>days</small>' : n === 0 ? 'Race day' : 'Done ✓';
     return '<div class="box"><div class="label">' + esc(r.name) + ' · ' + r.distanceKm + ' km</div>'
       + '<div class="big">' + val + '</div>'
-      + '<div class="meta">' + parseKey(r.date).toLocaleDateString([], { weekday:'short', day:'numeric', month:'short', year:'numeric' }) + '</div></div>';
+      + '<div class="meta">' + parseKey(r.date).toLocaleDateString([], { weekday:'short', day:'numeric', month:'short', year:'numeric' }) + (r.role ? '<br>' + pretty(r.role) : '') + '</div></div>';
   }).join('') + '</div>';
 }
 
@@ -630,6 +635,7 @@ function longRunsHtml(){
   const wk = weekOf(PLAN_START, new Date());
   const max = 42.2;
   const body = RM.phases.map(p => '<div class="phaseHead">Phase ' + p.id + ' · ' + esc(p.name) + ' · ' + fmtShort(p.startDate) + ' – ' + fmtShort(p.endDate) + '</div>'
+    + (p.coachDirective ? '<p class="note" style="margin:0 0 var(--space-2)">' + pretty(p.coachDirective) + ' ' + pretty(p.runsOver30km.implemented) + '</p>' : '')
     + p.longRunByWeek.map(w => {
       const cls = (w.race ? ' race' : w.deload ? ' deload' : '') + (w.week === wk ? ' current' : w.week < wk ? ' past' : '');
       return '<div class="lr' + cls + '"><span class="wk">W' + w.week + ' · ' + fmtShort(w.dates.split('/')[0]) + '</span>'
@@ -653,7 +659,7 @@ function pacingHtml(){
     + '<div class="zoneChip"><span class="zN">' + pretty(z.intervalMinPerKm) + '</span><span class="zL">Interval /km</span></div>'
     + '</div><p class="note">Zones from ' + pretty(HB.runningPlan.paceZonesBasis) + '. Proven half: ' + PLAN.athlete.running.provenHalfMarathon.time + ' (' + PLAN.athlete.running.provenHalfMarathon.paceMinPerKm + '/km).</p>'
     + '<div class="raceGrid">'
-    + '<div class="box"><div class="label">Bendigo Half · target</div><div class="big">' + pretty(rp.bendigoHalfMarathon.targetPaceMinPerKm) + '<small>/km</small></div><p class="note" style="margin-top:6px">' + pretty(rp.bendigoHalfMarathon.approach) + '. ' + pretty(rp.bendigoHalfMarathon.context) + '</p></div>'
+    + '<div class="box"><div class="label">Bendigo Half · trial run</div><div class="big">' + pretty(rp.bendigoHalfMarathon.targetPaceMinPerKm) + '<small>/km</small></div><p class="note" style="margin-top:6px">' + pretty(rp.bendigoHalfMarathon.approach) + '. ' + pretty(rp.bendigoHalfMarathon.context) + '</p></div>'
     + '<div class="box"><div class="label">Ballarat Marathon · first 25–28 km</div><div class="big">' + pretty(rp.ballaratMarathon.targetPaceMinPerKm_first25to28km) + '<small>/km</small></div><p class="note" style="margin-top:6px">' + pretty(rp.ballaratMarathon.approach) + '. ' + pretty(rp.ballaratMarathon.context) + '</p></div>'
     + '</div>'
     + '<div class="label" style="margin-top:var(--space-2)">Both race days</div><ul class="bullets">' + rp.bothRaceDays.map(x => '<li>' + pretty(x) + '</li>').join('') + '</ul>'
@@ -692,7 +698,7 @@ function strengthHtml(){
 
 function nutritionHtml(){
   const n = PLAN.nutrition, m = n.macrosDaily, f = n.raceFueling, c = BC.dayTypeCaloriesKcal;
-  const dayTypes = [['Rest day', c.restDay], ['Strength or easy-run day', c.strengthOrEasyRunDay], ['Wed quality run', c.qualityRunDayWed], ['Long-run day', c.longRunDay], ['Phase 3 long run, 25–30 km', c.bigLongRunDay_25to30km_phase3]];
+  const dayTypes = [['Rest day', c.restDay], ['Strength or easy-run day', c.strengthOrEasyRunDay], ['Wed quality run', c.qualityRunDayWed], ['Long-run day', c.longRunDay], ['Phase 3 long run, 30–34 km', c.bigLongRunDay_30to34km_phase3]];
   return '<details class="card"><summary><span class="cardName">Fuel & body composition</span></summary>'
     + '<div class="label">Goal</div><p class="note">' + pretty(BC.stated) + '. ' + pretty(BC.approach) + '</p>'
     + '<div class="tblWrap"><table class="tbl"><tr><th>Day type</th><th>kcal</th></tr>'
