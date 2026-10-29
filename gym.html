@@ -33,7 +33,7 @@ img{max-width:100%;height:auto}
      ============================================================= -->
 <script>
 const CONFIG = {
-  appTitle: "12-Week Hybrid Program",
+  appTitle: "Marathon Roadmap · Strength",
 
   // Weight unit shown everywhere. "kg" or "lb".
   units: "kg",
@@ -45,13 +45,13 @@ const CONFIG = {
     { id: "comm",  name: "Commercial Gym" }
   ],
 
-  // Training split — a fixed 4-day lower/upper split (see PROGRAM below for
-  // the 12-week periodization layered on top of it).
+  // Training split — the Marathon Roadmap's 4 gym days (see PROGRAMS below
+  // for the week-by-week loads). The ids are internal and stay fixed.
   days: [
-    { id: "lower_a", name: "Lower A" },
-    { id: "upper_a", name: "Upper A" },
-    { id: "lower_b", name: "Lower B" },
-    { id: "upper_b", name: "Upper B" }
+    { id: "lower_a", name: "Squat" },
+    { id: "upper_a", name: "Tue Upper" },
+    { id: "lower_b", name: "Deadlift" },
+    { id: "upper_b", name: "Fri Upper" }
   ],
 
   // Split rotation — a fixed 7-slot Monday->Sunday week (not a freewheeling
@@ -59,7 +59,7 @@ const CONFIG = {
   // "rest" here because running lives in the separate Running tile, not Gym.
   splitRotation: ["lower_a", "upper_a", "rest", "lower_b", "upper_b", "rest", "rest"],
 
-  // Anchor: Monday 6 July 2026 is day 1 of the program (index 0 = Lower A).
+  // Anchor: Monday 6 July 2026 is a Monday (index 0 = Squat day).
   // Because the rotation is exactly 7 long, this stays locked to weekdays
   // forever — no drift to correct.
   splitAnchor: {
@@ -77,59 +77,46 @@ const CONFIG = {
     windowDays: 30           // window to compute weight + strength change
   },
 
-  // Starter exercise list — the 12-week hybrid program, 4 sessions/week.
+  // Exercise list — the Marathon Roadmap's gym days (race-plan.html PLAN).
   // Each one needs:
   //   name        — what shows in the dropdown
   //   gym         — one of the gym ids above, or "both"
   //   day         — one of the day ids above
-  //   repMin      — bottom of your target rep range
-  //   repMax      — top of your target rep range
-  //   step        — how much weight you add when progressing (kg/lb).
-  //                 Sized per double-progression guidance: lower body
-  //                 compounds 2.5-5, upper body compounds 1-2.5,
-  //                 isolation moves 0.5-1 (or ~2-5% of the load).
-  //   startWeight — starting weight (ignored when bw: true) — these are
-  //                 conservative placeholders since the program doc didn't
-  //                 specify your actual working weights; adjust with the
-  //                 +/- before your first log on each one.
+  //   sets        — planned working sets
+  //   repMin/Max  — target reps (equal = a fixed rep target)
+  //   step        — how much weight you add when progressing (kg/lb)
+  //   startWeight — starting weight (ignored when bw: true)
   //   bw          — true for bodyweight/band movements (logs reps only)
-  //   isMainLift  — true for the week's single tracked main lift on that
-  //                 day; its rep target is driven by the 12-week block
-  //                 schedule (see PROGRAM) instead of the static range here.
+  //   role        — main (driven by PROGRAMS), accessory (Phase 1 only),
+  //                 core (every week) or upper (Tue/Fri maintenance, to wk 21)
+  //   from        — older exercise names this replaces, so their logs carry over
   //
-  // First-run defaults. Once a user logs anything, they edit through
-  // the in-app + / gear buttons; this block stays as the seed.
+  // First-run defaults (and the PLAN_VERSION migration below). Once a user
+  // logs anything, they edit through the in-app + / gear buttons.
   defaultExercises: [
-    // Monday — Lower A (squat / strength)
-    { name: "Back squat",              gym: "both", day: "lower_a", repMin: 6,  repMax: 8,  step: 5,    startWeight: 60, isMainLift: true },
-    { name: "Romanian deadlift",       gym: "both", day: "lower_a", repMin: 8,  repMax: 10, step: 5,    startWeight: 50 },
-    { name: "Bulgarian split squat",   gym: "both", day: "lower_a", repMin: 8,  repMax: 10, step: 2.5,  startWeight: 15 },
-    { name: "DB/band leg curl",        gym: "both", day: "lower_a", repMin: 10, repMax: 12, step: 1,    startWeight: 10 },
-    { name: "Standing calf raise",     gym: "both", day: "lower_a", repMin: 15, repMax: 20, step: 2,    startWeight: 40 },
-    { name: "Weighted plank (sec held)", gym: "both", day: "lower_a", repMin: 40, repMax: 60, step: 1, startWeight: 0, bw: true },
+    // Monday — Squat focus
+    { name: "Back Squat",          gym: "both", day: "lower_a", sets: 4, repMin: 6,  repMax: 6,  step: 2.5, startWeight: 145, isMainLift: true, role: "main", from: ["Back squat"] },
+    { name: "Romanian Deadlift",   gym: "both", day: "lower_a", sets: 3, repMin: 8,  repMax: 8,  step: 5,   startWeight: 100, role: "accessory", from: ["Romanian deadlift"] },
+    { name: "DB Walking Lunge (per leg)", gym: "both", day: "lower_a", sets: 3, repMin: 10, repMax: 10, step: 2, startWeight: 20, role: "accessory", from: ["Bulgarian split squat"] },
+    { name: "Standing Calf Raise", gym: "both", day: "lower_a", sets: 3, repMin: 15, repMax: 15, step: 5,   startWeight: 60, role: "accessory", from: ["Standing calf raise"] },
+    { name: "Hanging Knee Raise",  gym: "both", day: "lower_a", sets: 3, repMin: 12, repMax: 12, step: 1,   startWeight: 0, bw: true, role: "core" },
 
-    // Tuesday — Upper A (push, shoulder-friendly)
-    { name: "Flat DB bench press",     gym: "both", day: "upper_a", repMin: 6,  repMax: 8,  step: 2.5,  startWeight: 22.5, isMainLift: true },
-    { name: "Landmine press (1-arm)",  gym: "both", day: "upper_a", repMin: 8,  repMax: 10, step: 2.5,  startWeight: 15 },
-    { name: "Weighted push-up / DB floor press", gym: "both", day: "upper_a", repMin: 10, repMax: 12, step: 2.5, startWeight: 10 },
-    { name: "Face pull",               gym: "both", day: "upper_a", repMin: 13, repMax: 15, step: 1.25, startWeight: 15 },
-    { name: "Band external rotation",  gym: "both", day: "upper_a", repMin: 13, repMax: 15, step: 1,    startWeight: 5 },
-    { name: "Triceps rope pushdown / band extension", gym: "both", day: "upper_a", repMin: 10, repMax: 12, step: 1.25, startWeight: 20 },
+    // Tuesday — upper-body maintenance after the easy run
+    { name: "DB Bench / Push-Up",  gym: "both", day: "upper_a", sets: 3, repMin: 8,  repMax: 10, step: 2,   startWeight: 30, role: "upper", from: ["Flat DB bench press", "Weighted push-up / DB floor press"] },
+    { name: "Pull-Up / Band Row",  gym: "both", day: "upper_a", sets: 3, repMin: 6,  repMax: 10, step: 1,   startWeight: 0, bw: true, role: "upper", from: ["Pull-up / chin-up (assisted ok)"] },
+    { name: "Face Pull",           gym: "both", day: "upper_a", sets: 3, repMin: 12, repMax: 15, step: 1.25, startWeight: 20, role: "upper", from: ["Face pull"] },
 
-    // Thursday — Lower B (hinge / unilateral, moderate)
-    { name: "Trap bar / conventional deadlift", gym: "both", day: "lower_b", repMin: 6, repMax: 8, step: 5, startWeight: 80, isMainLift: true },
-    { name: "Walking lunge / step-up", gym: "both", day: "lower_b", repMin: 10, repMax: 10, step: 2.5,  startWeight: 15 },
-    { name: "Hip thrust",              gym: "both", day: "lower_b", repMin: 10, repMax: 12, step: 5,    startWeight: 40 },
-    { name: "Single-leg RDL",          gym: "both", day: "lower_b", repMin: 10, repMax: 10, step: 2.5,  startWeight: 12.5 },
-    { name: "Ab wheel rollout / Pallof press", gym: "both", day: "lower_b", repMin: 10, repMax: 12, step: 1, startWeight: 0, bw: true },
+    // Thursday — Deadlift / hinge + unilateral
+    { name: "Trap Bar / Conventional Deadlift", gym: "both", day: "lower_b", sets: 3, repMin: 5, repMax: 5, step: 2.5, startWeight: 150, isMainLift: true, role: "main", from: ["Trap bar / conventional deadlift"] },
+    { name: "Single-Leg RDL (per leg)", gym: "both", day: "lower_b", sets: 3, repMin: 10, repMax: 10, step: 2, startWeight: 24, role: "accessory", from: ["Single-leg RDL"] },
+    { name: "Hip Thrust",          gym: "both", day: "lower_b", sets: 3, repMin: 12, repMax: 12, step: 5,   startWeight: 100, role: "accessory", from: ["Hip thrust"] },
+    { name: "DB Step-Up (per leg)", gym: "both", day: "lower_b", sets: 3, repMin: 10, repMax: 10, step: 2,  startWeight: 20, role: "accessory", from: ["Walking lunge / step-up"] },
+    { name: "Pallof Press (per side)", gym: "both", day: "lower_b", sets: 3, repMin: 12, repMax: 12, step: 1, startWeight: 0, bw: true, role: "core", from: ["Ab wheel rollout / Pallof press"] },
 
-    // Friday — Upper B (pull, rotator cuff care)
-    { name: "Pull-up / chin-up (assisted ok)", gym: "both", day: "upper_b", repMin: 6, repMax: 10, step: 1, startWeight: 0, bw: true },
-    { name: "Barbell / DB bent-over row", gym: "both", day: "upper_b", repMin: 6, repMax: 8, step: 2.5, startWeight: 40, isMainLift: true },
-    { name: "Single-arm DB row",       gym: "both", day: "upper_b", repMin: 10, repMax: 10, step: 2.5,  startWeight: 20 },
-    { name: "Rear delt fly (light)",   gym: "both", day: "upper_b", repMin: 13, repMax: 15, step: 1,    startWeight: 8 },
-    { name: "Band pull-apart",         gym: "both", day: "upper_b", repMin: 18, repMax: 20, step: 1,    startWeight: 0, bw: true },
-    { name: "DB curl",                 gym: "both", day: "upper_b", repMin: 10, repMax: 12, step: 1,    startWeight: 12.5 }
+    // Friday — upper-body maintenance after the easy run
+    { name: "Barbell / DB Row",    gym: "both", day: "upper_b", sets: 3, repMin: 8,  repMax: 10, step: 2.5, startWeight: 60, role: "upper", from: ["Barbell / DB bent-over row"] },
+    { name: "Incline / Landmine Press", gym: "both", day: "upper_b", sets: 3, repMin: 8, repMax: 10, step: 2, startWeight: 25, role: "upper", from: ["Landmine press (1-arm)"] },
+    { name: "DB Curl",             gym: "both", day: "upper_b", sets: 3, repMin: 10, repMax: 12, step: 1,   startWeight: 12.5, role: "upper", from: ["DB curl"] }
   ]
 };
 
@@ -220,6 +207,7 @@ const PROGRAMS = [
     id: 'hybrid-2026',
     name: 'Hybrid Performance Block',
     dates: 'Oct–Jan',
+    archived: true, // superseded by the Marathon Roadmap from 27 Oct
     startDate: '2026-10-19', // Monday
     totalWeeks: 12,
     deloadWeeks: [4, 8, 12],
@@ -1355,7 +1343,7 @@ img, video, canvas, svg { max-width: 100%; }
          until "Apply to today's target" is tapped. -->
     <div class="po-readiness-banner" id="readinessBanner"></div>
 
-    <!-- Shoulder-care reminder — shown on Upper A / Upper B only -->
+    <!-- Shoulder-care reminder — shown on the Tue/Fri upper days only -->
     <div class="po-shoulder-banner" id="shoulderBanner">🩺 <span>Face pulls + band external rotations — every week, no exceptions.</span></div>
 
     <!-- Exercise -->
@@ -1627,6 +1615,33 @@ img, video, canvas, svg { max-width: 100%; }
       id: 'seed_' + i + '_' + Date.now()
     }, e));
   }
+  // One-off move onto the current plan's days + exercise list. An existing
+  // exercise whose name matches (or is listed in `from`) keeps its id, so
+  // its logs carry over; anything not in the plan is archived — hidden from
+  // the picker but still counted in history.
+  const PLAN_VERSION = 'marathon-2027';
+  function migrateToPlan(s) {
+    const old = s.exercises.filter(e => !e.archived);
+    const used = {};
+    const fresh = CONFIG.defaultExercises.map((d, i) => {
+      const names = [d.name].concat(d.from || []).map(n => n.toLowerCase());
+      const match = old.find(e => !used[e.id] && names.indexOf((e.name || '').toLowerCase()) !== -1);
+      const ex = Object.assign({ id: 'seed_' + i + '_' + Date.now() }, d);
+      if (match) {
+        used[match.id] = true;
+        ex.id = match.id;
+        if (!d.isMainLift && (s.logs[match.id] || []).length) ex.startWeight = match.startWeight;
+      }
+      return ex;
+    });
+    const retired = s.exercises.filter(e => !used[e.id]).map(e => Object.assign({}, e, { archived: true }));
+    s.exercises = fresh.concat(retired);
+    s.days = CONFIG.days.slice();
+    s.splitRotation = null; s.splitAnchor = null; // rebuilt from CONFIG below
+    s.filterDay = null; s.currentEx = null; s._userPickedDay = false;
+    s.planVersion = PLAN_VERSION;
+    try { localStorage.removeItem('po_program_v1'); } catch (e) {}
+  }
   function loadState() {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -1641,6 +1656,7 @@ img, video, canvas, svg { max-width: 100%; }
     s.days  = (Array.isArray(s.days)  && s.days.length)  ? s.days  : CONFIG.days.slice();
     s.exercises = Array.isArray(s.exercises) ? s.exercises : buildDefaultExercises();
     s.logs = (s.logs && typeof s.logs === 'object') ? s.logs : {};
+    if (s.planVersion !== PLAN_VERSION) migrateToPlan(s);
     s.filterGym = s.filterGym || s.gyms[0].id;
     s.filterDay = s.filterDay || s.days[0].id;
     // Split rotation lives in state so the user can edit it via the pill modal.
@@ -1673,6 +1689,7 @@ img, video, canvas, svg { max-width: 100%; }
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
   }
   let state = loadState();
+  saveState(); // persist a plan migration straight away
   document.getElementById('appTitle').textContent = CONFIG.appTitle || 'Progressive Overload Coach';
 
   // ============================================================
@@ -1686,7 +1703,7 @@ img, video, canvas, svg { max-width: 100%; }
   function estimate1RM(w, r) { if (r < 2) return w; return w * (1 + r / 30); }
   function roundToStep(v, s) { return Math.round(v / s) * s; }
   function getFiltered() {
-    return state.exercises.filter(e =>
+    return state.exercises.filter(e => !e.archived &&
       (e.gym === state.filterGym || e.gym === 'both') && e.day === state.filterDay);
   }
 
@@ -1932,6 +1949,18 @@ img, video, canvas, svg { max-width: 100%; }
     const wrap = $('rxWrap');
     const ex = getCurrentEx();
     if (!ex) { wrap.innerHTML = '<div class="po-rx-empty">Pick a gym and day above.</div>'; return; }
+    // Main lifts follow the plan's kg for the week; dropped exercises say so.
+    const scheme = ex.isMainLift ? mainLiftScheme(ex.day) : null;
+    const off = scheme && scheme.off ? scheme.note : (!ex.isMainLift ? offPlanNote(ex) : null);
+    if (off) {
+      wrap.innerHTML = '<div class="po-rx-card"><div class="po-rx-label">' + escape(ex.name) + '</div><div class="po-rx-headline">Skip this week</div><span class="po-rx-tag hold">Not in plan</span><p class="po-rx-reason">' + escape(off) + '</p></div>';
+      return;
+    }
+    if (scheme && scheme.kg) {
+      const reps = ex.repMin === ex.repMax ? ex.repMin : ex.repMin + '–' + ex.repMax;
+      wrap.innerHTML = '<div class="po-rx-card"><div class="po-rx-label">' + escape(ex.name) + ' · this week</div><div class="po-rx-headline"><span class="po-accent">' + escape(scheme.kg) + unit() + '</span> × ' + reps + ' reps</div><span class="po-rx-tag ' + (scheme.deload ? 'down' : 'hold') + '">' + (scheme.deload ? 'Lighter week' : 'Plan load') + '</span><p class="po-rx-reason">' + (scheme.setsLabel || scheme.sets) + ' sets @ RPE ' + escape(scheme.rpe) + '. Starting-point number — autoregulate by feel on the day rather than forcing it.</p></div>';
+      return;
+    }
     const logs = getLogs();
     const rx = getRx(ex, logs);
     if (!rx) {
@@ -2201,6 +2230,13 @@ img, video, canvas, svg { max-width: 100%; }
   // (isMainLift) get their sets/reps/RPE driven week-to-week by PROGRAM;
   // every other exercise shows its own static rep range with a double
   // progression reminder, so switching exercises never leaves this blank.
+  // Why a non-main exercise is out of the plan this week, or null.
+  function offPlanNote(ex) {
+    const info = programWeekInfo(), wk = info.status === 'active' ? info.week : 0;
+    if (ex.role === 'accessory' && wk >= 12) return 'Accessories are trimmed from week 12 — main lift + core only';
+    if (ex.role === 'upper' && wk >= 22) return 'Upper-body maintenance dropped from week 22';
+    return null;
+  }
   function renderWeekTarget() {
     const section = $('weekTargetSection');
     const ex = getCurrentEx();
@@ -2234,14 +2270,30 @@ img, video, canvas, svg { max-width: 100%; }
     }
     section.style.display = '';
     const repTxt = ex.repMin === ex.repMax ? ex.repMin : (ex.repMin + '–' + ex.repMax);
+    const info = programWeekInfo(), wk = info.status === 'active' ? info.week : 0;
+    const off = offPlanNote(ex);
+    if (off) {
+      $('weekTargetWrap').innerHTML = '<div class="po-week-target">'
+        + '<div><div class="po-week-target-main">Not in the plan this week</div>'
+        + '<div class="po-week-target-sub">Week ' + wk + ' · ' + off + '</div></div>'
+        + '<span class="po-week-target-badge">Off</span>'
+        + '</div>';
+      return;
+    }
+    const upper = ex.role === 'upper';
+    const setsTxt = upper ? '2–3' : (ex.sets || 3);
+    const rpe = upper ? '6–7' : ex.role === 'core' ? '7' : '7–8';
+    const sub = upper ? 'Maintenance · 15–20 min after the easy run'
+      : ex.role === 'core' ? 'Core — stays in every week of the build'
+      : 'Same weight until every set hits ' + ex.repMax + ', then add load';
     $('weekTargetWrap').innerHTML = '<div class="po-week-target">'
-      + '<div><div class="po-week-target-main">' + repTxt + ' reps @ RPE 8–9 (1–2 RIR)</div>'
-      + '<div class="po-week-target-sub">Double progression — same weight until every set hits ' + ex.repMax + ', then add load</div></div>'
-      + '<span class="po-week-target-badge">Accessory</span>'
+      + '<div><div class="po-week-target-main">' + setsTxt + ' sets × ' + repTxt + ' reps @ RPE ' + rpe + '</div>'
+      + '<div class="po-week-target-sub">' + (wk ? 'Week ' + wk + ' · ' : '') + sub + '</div></div>'
+      + '<span class="po-week-target-badge">' + (upper ? 'Upper' : ex.role === 'core' ? 'Core' : 'Accessory') + '</span>'
       + '</div>';
   }
 
-  // Shoulder-care reminder — visible whenever the selected day is Upper A/B.
+  // Shoulder-care reminder — visible whenever the selected day is a Tue/Fri upper day.
   function renderShoulderBanner() {
     const banner = $('shoulderBanner');
     banner.classList.toggle('show', state.filterDay === 'upper_a' || state.filterDay === 'upper_b');
